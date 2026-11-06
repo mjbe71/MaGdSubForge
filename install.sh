@@ -422,8 +422,8 @@ Group=$SVC_USER
 WorkingDirectory=$APP_DIR
 Environment=MAGDSUBFORGE_CONFIG=$CONFIG
 ExecStart=$APP_DIR/venv/bin/gunicorn app:app
-Restart=on-failure
-RestartSec=3
+Restart=always
+RestartSec=2
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 NoNewPrivileges=true

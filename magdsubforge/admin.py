@@ -201,6 +201,17 @@ def run_checks(app, conf, clean, problems, subid, secure_request):
     return out
 
 
+def can_restart():
+    """True when this process is a service started by systemd (which restarts it after it exits: Restart=always)."""
+    return bool(os.environ.get("INVOCATION_ID")) and os.name == "posix" and os.getppid() > 1
+
+
+def _stop_master():
+    import signal
+    time.sleep(0.7)                                   # let the HTTP answer leave first
+    os.kill(os.getppid(), signal.SIGTERM)             # gunicorn's master; systemd then starts a fresh service
+
+
 def register(app, store):
     base = store.get()["admin"]["path"].rstrip("/") or "/admin"
     lockout = Lockout()
@@ -310,7 +321,7 @@ def register(app, store):
         _, problems = normalize(raw)
         errors, warnings = split_problems(problems)
         return reply({"config": raw, "errors": errors, "warnings": warnings, "file": os.path.basename(store.path),
-                      "route": conf["server"]["route"]})
+                      "route": conf["server"]["route"], "can_restart": can_restart()})
 
     @guarded
     def preview(conf, sess):
@@ -366,6 +377,13 @@ def register(app, store):
         return reply({"ok": True, "warnings": warnings})
 
     @guarded
+    def restart(conf, sess):
+        if not can_restart():
+            return reply({"error": "restart is only available when the service runs under systemd (use: sudo magdsubforge restart)"}, 400)
+        threading.Thread(target=_stop_master, daemon=True).start()
+        return reply({"ok": True})
+
+    @guarded
     def checks(conf, sess):
         data = body()
         cand = candidate(data)
@@ -392,5 +410,6 @@ def register(app, store):
     for name, fn, methods in (("login", login, ["POST"]), ("logout", logout, ["POST"]), ("me", me, ["GET"]),
                               ("state", state, ["GET"]), ("preview", preview, ["POST"]),
                               ("sample", sample, ["POST"]), ("save", save, ["POST"]),
-                              ("register-account", register_account, ["POST"]), ("checks", checks, ["POST"])):
+                              ("register-account", register_account, ["POST"]), ("checks", checks, ["POST"]),
+                              ("restart", restart, ["POST"])):
         app.add_url_rule("%s/api/%s" % (base, name), "admin_api_" + name, fn, methods=methods)

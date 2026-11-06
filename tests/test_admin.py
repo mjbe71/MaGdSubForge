@@ -211,3 +211,37 @@ class Checks(unittest.TestCase):
     def test_secure_request_counts_as_https(self):
         r = self.c.post("/admin/api/checks", json={"config": {}}, headers={"X-CSRF-Token": self.csrf, "X-Forwarded-Proto": "https"})
         self.assertEqual({c["id"]: c for c in r.get_json()["checks"]}["https"]["status"], "ok")
+
+
+class Restart(unittest.TestCase):
+    def setUp(self):
+        self.app, _ = make({"admin": {"password_hash": generate_password_hash(PW)}})
+        self.c = self.app.test_client()
+        _, self.csrf = login(self.c)
+
+    def post(self):
+        return self.c.post("/admin/api/restart", json={}, headers={"X-CSRF-Token": self.csrf})
+
+    def test_refused_outside_systemd(self):
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("INVOCATION_ID", None)
+            self.assertEqual(self.post().status_code, 400)
+            self.assertFalse(self.c.get("/admin/api/state").get_json()["can_restart"])
+
+    def test_signals_the_master_under_systemd(self):
+        with mock.patch.dict(os.environ, {"INVOCATION_ID": "x"}), mock.patch("os.getppid", return_value=4242), \
+                mock.patch("magdsubforge.admin.time.sleep"), mock.patch("os.kill") as kill:
+            self.assertTrue(self.c.get("/admin/api/state").get_json()["can_restart"])
+            r = self.post()
+            self.assertEqual(r.status_code, 200)
+            import time as _t
+            for _ in range(50):
+                if kill.called:
+                    break
+                _t.sleep(0.02)
+        import signal
+        kill.assert_called_once_with(4242, signal.SIGTERM)
+
+    def test_needs_login_and_csrf(self):
+        self.assertEqual(self.app.test_client().post("/admin/api/restart", json={}).status_code, 401)
+        self.assertEqual(self.c.post("/admin/api/restart", json={}).status_code, 403)

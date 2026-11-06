@@ -25,7 +25,7 @@
       position: "Position", default: "where the first member was", top: "top", bottom: "bottom",
       stage: "Stage", source: "source (before rules/groups)", output: "output (after groups)", target: "Target", config: "whole config", outbound: "each proxy outbound",
       merge: "Merge (JSON)", routingPre: "Routing rules to add first (JSON list)", routingPost: "Routing rules to add last (JSON list)",
-      server: "Server", panel: "Panel", restartNote: "Changing the route needs a restart of the service.", adminNote: "Login settings (admin.*) are edited in config.json only.",
+      server: "Server", panel: "Panel", restartNote: "Changing the address, port, route, HTTPS or workers needs a restart of the service.", adminNote: "Login settings (admin.*) are edited in config.json only.",
       host: "Listen address", port: "Port", route: "Public path", subidRegex: "Allowed id (regex)", workers: "Workers", threads: "Threads",
       panelUrl: "Panel JSON-subscription URL", pageUrl: "Browser redirect URL (optional)", timeout: "Timeout (s)", verifyTls: "Verify TLS certificate",
       headers: "Extra request headers (JSON)", passHeaders: "Response headers passed to clients (JSON list)",
@@ -61,7 +61,7 @@
       position: "جایگاه", default: "جای اولین عضو", top: "بالا", bottom: "پایین",
       stage: "مرحله", source: "source (قبل از قوانین و گروه‌ها)", output: "output (بعد از گروه‌ها)", target: "هدف", config: "کل کانفیگ", outbound: "هر outbound پروکسی",
       merge: "ادغام (JSON)", routingPre: "قوانین مسیریابی برای اول لیست (لیست JSON)", routingPost: "قوانین مسیریابی برای آخر لیست (لیست JSON)",
-      server: "سرور", panel: "پنل", restartNote: "تغییر مسیر (route) به ری‌استارت سرویس نیاز دارد.", adminNote: "تنظیمات ورود (admin.*) فقط در config.json ویرایش می‌شوند.",
+      server: "سرور", panel: "پنل", restartNote: "تغییر آدرس، پورت، مسیر، HTTPS یا تعداد worker به راه‌اندازی مجدد سرویس نیاز دارد.", adminNote: "تنظیمات ورود (admin.*) فقط در config.json ویرایش می‌شوند.",
       host: "آدرس شنود", port: "پورت", route: "مسیر عمومی", subidRegex: "شناسهٔ مجاز (regex)", workers: "Worker", threads: "Thread",
       panelUrl: "آدرس ساب JSON پنل", pageUrl: "آدرس ریدایرکت مرورگر (اختیاری)", timeout: "Timeout (ثانیه)", verifyTls: "بررسی گواهی TLS",
       headers: "هدرهای اضافهٔ درخواست (JSON)", passHeaders: "هدرهای پاسخ که به کلاینت می‌روند (لیست JSON)",
@@ -111,7 +111,9 @@
     copy: "Copy", copied: "Copied", goTabs: "You can fine-tune everything in the other tabs.",
     exp_drop_rule: "Removed by rule \"{rule}\"", exp_drop: "Removed", exp_top: "Moved to the top (\"{rule}\")", exp_bottom: "Moved to the bottom (\"{rule}\")",
     exp_keep_rule: "Kept by rule \"{rule}\"", exp_kept: "Kept as it is", exp_group: "Merged into balancer \"{g}\"", exp_chain: "Exit of \"{c}\"",
-    colWhat: "What happens", chipsHint: "Type a word, then press Enter or +. Add as many as you like.", addWord: "+ Add", noAccountYet: "The WARP chain \"{id}\" cannot be shown here yet: it needs a WARP account. With automatic accounts on, each user's account is created the first time they fetch their subscription.",
+    colWhat: "What happens",
+    restartBtn: "Restart the service", restartConfirm: "Restart the service now? The panel is unavailable for a few seconds.", restarting: "Restarting… waiting for the service to come back.",
+    restarted: "The service is back.", restartFail: "Could not restart: {err}", restartManual: "To restart: run \"sudo magdsubforge restart\" on the server.", restartNeeded: "You changed server settings: restart the service to apply them.", chipsHint: "Type a word, then press Enter or +. Add as many as you like.", addWord: "+ Add", noAccountYet: "The WARP chain \"{id}\" cannot be shown here yet: it needs a WARP account. With automatic accounts on, each user's account is created the first time they fetch their subscription.",
     c_panel_url_ok: "Panel address is set", c_panel_url_fail: "The panel address is not set",
     c_panel_reach_ok: "The panel is reachable", c_panel_reach_warn: "The panel answered with an error (HTTP {code})",
     c_panel_reach_fail_connect: "Cannot connect to the panel: wrong address or port, or a firewall is blocking it",
@@ -156,7 +158,9 @@
     copy: "کپی", copied: "کپی شد", goTabs: "همه‌چیز را در تب‌های دیگر می‌توانید دقیق‌تر تنظیم کنید.",
     exp_drop_rule: "با قانون «{rule}» حذف شد", exp_drop: "حذف شد", exp_top: "به بالای لیست رفت («{rule}»)", exp_bottom: "به پایین لیست رفت («{rule}»)",
     exp_keep_rule: "با قانون «{rule}» نگه داشته شد", exp_kept: "همان‌طور که هست می‌ماند", exp_group: "در بالانسر «{g}» ادغام شد", exp_chain: "خروجی «{c}»",
-    colWhat: "چه می‌شود", chipsHint: "یک کلمه بنویسید و Enter یا «+ افزودن» را بزنید. هر تعداد می‌توانید اضافه کنید.", addWord: "+ افزودن", noAccountYet: "زنجیرهٔ WARP با نام «{id}» هنوز در اینجا قابل نمایش نیست: به حساب WARP نیاز دارد. اگر حساب خودکار روشن باشد، حساب هر کاربر هنگام اولین دریافت ساب او ساخته می‌شود.",
+    colWhat: "چه می‌شود",
+    restartBtn: "راه‌اندازی مجدد سرویس", restartConfirm: "سرویس همین حالا راه‌اندازی مجدد شود؟ پنل چند ثانیه در دسترس نیست.", restarting: "در حال راه‌اندازی مجدد… منتظر برگشتن سرویس هستیم.",
+    restarted: "سرویس برگشت.", restartFail: "راه‌اندازی مجدد ممکن نشد: {err}", restartManual: "برای راه‌اندازی مجدد، روی سرور «sudo magdsubforge restart» را بزنید.", restartNeeded: "تنظیمات سرور را تغییر داده‌اید: برای اعمال، سرویس را راه‌اندازی مجدد کنید.", chipsHint: "یک کلمه بنویسید و Enter یا «+ افزودن» را بزنید. هر تعداد می‌توانید اضافه کنید.", addWord: "+ افزودن", noAccountYet: "زنجیرهٔ WARP با نام «{id}» هنوز در اینجا قابل نمایش نیست: به حساب WARP نیاز دارد. اگر حساب خودکار روشن باشد، حساب هر کاربر هنگام اولین دریافت ساب او ساخته می‌شود.",
     c_panel_url_ok: "آدرس پنل تنظیم شده است", c_panel_url_fail: "آدرس پنل تنظیم نشده است",
     c_panel_reach_ok: "پنل در دسترس است", c_panel_reach_warn: "پنل با خطا پاسخ داد (HTTP {code})",
     c_panel_reach_fail_connect: "اتصال به پنل ممکن نیست: آدرس یا پورت اشتباه است یا فایروال جلویش را گرفته",
@@ -218,6 +222,9 @@
   let cfg = {};
   let savedSnapshot = "{}";
   let loadedRoute = "/sub/";
+  let canRestart = false;
+  let loadedServer = "{}";
+  const needsRestart = () => JSON.stringify(cfg.server || {}) !== loadedServer;
   let sample = null;
   let tab = "start";
   let previewTimer = null;
@@ -228,7 +235,8 @@
   async function api(path, body) {
     const opt = { method: body === undefined ? "GET" : "POST", headers: { "X-CSRF-Token": csrf }, credentials: "same-origin" };
     if (body !== undefined) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(body); }
-    const r = await fetch(BASE + "/api/" + path, opt);
+    let r;
+    try { r = await fetch(BASE + "/api/" + path, opt); } catch (e) { return { status: 0, ok: false, data: {} }; }
     let data = {};
     try { data = await r.json(); } catch (e) { /* not json */ }
     return { status: r.status, ok: r.ok, data };
@@ -473,6 +481,26 @@
       h("div", {}, btn, " ", msg));
   }
 
+  async function restartService() {
+    if (!confirm(t("restartConfirm"))) return;
+    setStatus(t("restarting"), "dirty");
+    const r = await api("restart", {});
+    if (!r.ok) { setStatus(t("restartFail", { err: r.data.error || "error" }), "err"); return; }
+    for (let i = 0; i < 40; i++) {
+      await new Promise((res) => setTimeout(res, 1500));
+      const me = await api("me");
+      if (me.ok) { loadedServer = JSON.stringify(cfg.server || {}); setStatus(t("restarted"), "ok"); if (tab === "settings") drawEditor(); return; }
+    }
+    setStatus(t("restartFail", { err: "timeout" }), "err");
+  }
+  function restartBlock() {
+    const box = h("div", { class: "restart" });
+    box.append(h("p", { class: "hint" }, t("restartNote")));
+    if (needsRestart()) box.append(h("div", { class: "msg warn" }, t("restartNeeded")));
+    box.append(canRestart ? h("button", { type: "button", onclick: restartService }, t("restartBtn")) : h("p", { class: "hint" }, t("restartManual")));
+    return box;
+  }
+
   function settingsEditor() {
     const s = (cfg.server = cfg.server || {});
     const p = (cfg.panel = cfg.panel || {});
@@ -488,7 +516,7 @@
         field(t("threads"), bindText(s, "threads", { num: true })),
         field(t("tlsCert"), bindText(s, "tls_cert", { placeholder: "/etc/magdsubforge/certs/fullchain.pem" })),
         field(t("tlsKey"), bindText(s, "tls_key", { placeholder: "/etc/magdsubforge/certs/privkey.pem" }))),
-      h("p", { class: "hint" }, t("restartNote")),
+      restartBlock(),
       h("h3", {}, t("panel")),
       h("div", { class: "grid" },
         field(t("panelUrl"), bindText(p, "url", { placeholder: "https://panel.example.com:2096/json/" }), null, true),
@@ -691,7 +719,7 @@
         note.replaceChildren(h("p", { class: "hint" }, t("fetching")));
         lastSubid = subid.value.trim();
         const r = await api("sample", { subid: lastSubid, config: cfg });
-        if (r.ok) { sample = r.data.configs; drawSampleInfo(); runPreview(); showSample(); }
+        if (r.ok) { sample = r.data.configs; drawSampleInfo(); runPreview(); drawEditor(); }
         else note.replaceChildren(h("div", { class: "msg err" }, r.data.error || "error"));
       } }, t("fetch"))), note, buttons(sample ? t("next") : t("skip")));
       showSample();
@@ -845,8 +873,7 @@
     const r = await api("save", { config: cfg });
     if (r.ok) {
       savedSnapshot = JSON.stringify(cfg);
-      const routeNow = (cfg.server && cfg.server.route) || "/sub/";
-      setStatus(t("saved") + (routeNow !== loadedRoute ? " " + t("restartNote") : ""), "ok");
+      setStatus(t("saved") + (needsRestart() ? " " + t("restartNeeded") : ""), "ok");
       lastPreview = Object.assign(lastPreview || {}, { errors: [], warnings: r.data.warnings || [] });
       runPreview();
       if (tab === "start" && wiz.step === 3) { wiz.done = true; drawEditor(); }
@@ -908,6 +935,8 @@
     tab = (cfg.panel && cfg.panel.url && hasWork) ? "rules" : "start";
     savedSnapshot = JSON.stringify(cfg);
     loadedRoute = r.data.route;
+    canRestart = !!r.data.can_restart;
+    loadedServer = JSON.stringify(cfg.server || {});
     lastPreview = { errors: r.data.errors, warnings: r.data.warnings };
     applyLang();
     drawMain();
