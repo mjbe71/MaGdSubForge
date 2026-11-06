@@ -489,7 +489,7 @@
     for (let i = 0; i < 40; i++) {
       await new Promise((res) => setTimeout(res, 1500));
       const me = await api("me");
-      if (me.ok) { loadedServer = JSON.stringify(cfg.server || {}); setStatus(t("restarted"), "ok"); if (tab === "settings") drawEditor(); return; }
+      if (me.ok) { loadedServer = JSON.stringify(cfg.server || {}); updateRestartBtn(); setStatus(t("restarted"), "ok"); if (tab === "settings") drawEditor(); return; }
     }
     setStatus(t("restartFail", { err: "timeout" }), "err");
   }
@@ -497,7 +497,7 @@
     const box = h("div", { class: "restart" });
     box.append(h("p", { class: "hint" }, t("restartNote")));
     if (needsRestart()) box.append(h("div", { class: "msg warn" }, t("restartNeeded")));
-    box.append(canRestart ? h("button", { type: "button", onclick: restartService }, t("restartBtn")) : h("p", { class: "hint" }, t("restartManual")));
+    if (!canRestart) box.append(h("p", { class: "hint" }, t("restartManual")));
     return box;
   }
 
@@ -771,12 +771,19 @@
 
   // ---------- main layout ----------
   const statusEl = h("span", { class: "status" });
+  const restartHeaderBtn = h("button", { type: "button", class: "restart-btn", onclick: () => restartService() });
+  function updateRestartBtn() {
+    restartHeaderBtn.textContent = t("restartBtn");
+    restartHeaderBtn.classList.toggle("needed", needsRestart());
+    restartHeaderBtn.title = needsRestart() ? t("restartNeeded") : "";
+  }
   const editorEl = h("section", { class: "card" });
   const previewEl = h("section", { class: "card" });
 
   function setStatus(text, cls) { statusEl.textContent = text; statusEl.className = "status " + (cls || ""); }
   function isDirty() { return JSON.stringify(cfg) !== savedSnapshot; }
   function changed() {
+    updateRestartBtn();
     if (isDirty()) setStatus(t("unsaved"), "dirty"); else setStatus("", "");
     schedulePreview();
   }
@@ -873,7 +880,7 @@
     const r = await api("save", { config: cfg });
     if (r.ok) {
       savedSnapshot = JSON.stringify(cfg);
-      setStatus(t("saved") + (needsRestart() ? " " + t("restartNeeded") : ""), "ok");
+      setStatus(t("saved") + (needsRestart() ? " " + t("restartNeeded") : ""), "ok"); updateRestartBtn();
       lastPreview = Object.assign(lastPreview || {}, { errors: [], warnings: r.data.warnings || [] });
       runPreview();
       if (tab === "start" && wiz.step === 3) { wiz.done = true; drawEditor(); }
@@ -905,6 +912,7 @@
     root.replaceChildren(
       h("header", {}, h("h1", {}, t("title")), statusEl, langToggle(),
         h("button", { type: "button", onclick: () => { if (!isDirty() || confirm(t("revert") + "?")) start(); } }, t("revert")), saveBtn,
+        canRestart ? restartHeaderBtn : null,
         h("button", { type: "button", onclick: async () => { await api("logout", {}); drawLogin(); } }, t("logout"))),
       h("main", {}, editorEl, previewEl), ...datalists());
     drawEditor();

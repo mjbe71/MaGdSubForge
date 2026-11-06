@@ -102,3 +102,4 @@ ul.plain { margin: 6px 0; padding-inline-start: 18px; font-size: 13px; }
 .chips-row { display: flex; gap: 6px; align-items: stretch; }
 .chips-row .chips { flex: 1; min-width: 0; }
 .chips-add { white-space: nowrap; }
+button.restart-btn.needed { border-color: var(--warn); color: var(--warn); font-weight: 600; }
