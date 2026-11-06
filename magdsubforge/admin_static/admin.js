@@ -96,11 +96,11 @@
     s2help: "Enter the subscription id of any real user (the last part of their link). We fetch it from the panel and show what it contains.",
     found: "Found {n} config(s):", more: "… and {n} more",
     s3help: "Pick what you want. Nothing here is required: with nothing selected, users get the panel's subscription unchanged. Everything created here can be edited later in the other tabs.",
-    goalHide: "Hide some configs", goalHideHelp: "Remove configs whose name contains:",
-    goalBalance: "Balance configs automatically", goalBalanceHelp: "Merge configs whose name contains … into one smart config:",
+    goalHide: "Hide some configs", goalHideHelp: "Remove configs whose name contains any of these:",
+    goalBalance: "Balance configs automatically", goalBalanceHelp: "Merge configs whose name contains any of these into one smart config:",
     balSplit: "One balancer per … (optional pattern; the first (group) is the name, e.g. ^[^-]+-([^-]+) )", balType: "Balancer type",
     balNote: "A health probe with common defaults is added; you can change it in the Balancers tab.",
-    goalWarp: "Send traffic through WARP (over MASQUE)", goalWarpHelp: "Use configs whose name contains … as the exit:",
+    goalWarp: "Send traffic through WARP (over MASQUE)", goalWarpHelp: "Use configs whose name contains any of these as the exit:",
     warpEndpoint: "WARP endpoint addresses (one per line)", warpEndpointHint: "Each user gets one of these (always the same one for the same user).", warpAuto: "Create a WARP account for each user automatically",
     warpNote: "The outbound is a working WARP-over-MASQUE example; you can edit every field in the \"Via another route\" tab. Automatic accounts use Cloudflare's unofficial API.",
     matches: "matches {n} of {m} in your sample", noMatchSample: "Try a subscription in step 2 to see how many match.",
@@ -111,7 +111,7 @@
     copy: "Copy", copied: "Copied", goTabs: "You can fine-tune everything in the other tabs.",
     exp_drop_rule: "Removed by rule \"{rule}\"", exp_drop: "Removed", exp_top: "Moved to the top (\"{rule}\")", exp_bottom: "Moved to the bottom (\"{rule}\")",
     exp_keep_rule: "Kept by rule \"{rule}\"", exp_kept: "Kept as it is", exp_group: "Merged into balancer \"{g}\"", exp_chain: "Exit of \"{c}\"",
-    colWhat: "What happens", noAccountYet: "The WARP chain \"{id}\" cannot be shown here yet: it needs a WARP account. With automatic accounts on, each user's account is created the first time they fetch their subscription.",
+    colWhat: "What happens", chipsHint: "Type a word, press Enter. Add as many as you like.", noAccountYet: "The WARP chain \"{id}\" cannot be shown here yet: it needs a WARP account. With automatic accounts on, each user's account is created the first time they fetch their subscription.",
     c_panel_url_ok: "Panel address is set", c_panel_url_fail: "The panel address is not set",
     c_panel_reach_ok: "The panel is reachable", c_panel_reach_warn: "The panel answered with an error (HTTP {code})",
     c_panel_reach_fail_connect: "Cannot connect to the panel: wrong address or port, or a firewall is blocking it",
@@ -141,11 +141,11 @@
     s2help: "شناسهٔ ساب یک کاربر واقعی را وارد کنید (بخش آخر لینک او). آن را از پنل می‌گیریم و محتوایش را نشان می‌دهیم.",
     found: "{n} کانفیگ پیدا شد:", more: "… و {n} مورد دیگر",
     s3help: "هر چه می‌خواهید انتخاب کنید. هیچ‌کدام اجباری نیست: اگر چیزی انتخاب نکنید، کاربران همان ساب پنل را بدون تغییر می‌گیرند. هر چه اینجا ساخته شود بعداً در تب‌های دیگر قابل ویرایش است.",
-    goalHide: "پنهان کردن بعضی کانفیگ‌ها", goalHideHelp: "کانفیگ‌هایی که نامشان شامل این متن است حذف شوند:",
-    goalBalance: "بالانس خودکار کانفیگ‌ها", goalBalanceHelp: "کانفیگ‌هایی که نامشان شامل این متن است در یک کانفیگ هوشمند ادغام شوند:",
+    goalHide: "پنهان کردن بعضی کانفیگ‌ها", goalHideHelp: "کانفیگ‌هایی که نامشان شامل هر یک از این‌ها باشد حذف شوند:",
+    goalBalance: "بالانس خودکار کانفیگ‌ها", goalBalanceHelp: "کانفیگ‌هایی که نامشان شامل هر یک از این‌ها باشد در یک کانفیگ هوشمند ادغام شوند:",
     balSplit: "برای هر … یک بالانسر (الگوی اختیاری؛ (گروه) اول = نام، مثلاً ^[^-]+-([^-]+) )", balType: "نوع بالانسر",
     balNote: "یک probe سلامت با مقادیر رایج اضافه می‌شود؛ در تب «بالانسر» می‌توانید تغییرش دهید.",
-    goalWarp: "عبور ترافیک از WARP (روی MASQUE)", goalWarpHelp: "کانفیگ‌هایی که نامشان شامل این متن است به‌عنوان خروجی استفاده شوند:",
+    goalWarp: "عبور ترافیک از WARP (روی MASQUE)", goalWarpHelp: "کانفیگ‌هایی که نامشان شامل هر یک از این‌ها باشد به‌عنوان خروجی استفاده شوند:",
     warpEndpoint: "آدرس‌های endpoint وارپ (هر خط یکی)", warpEndpointHint: "هر کاربر یکی از این‌ها را می‌گیرد (برای یک کاربر همیشه همان یکی).", warpAuto: "برای هر کاربر خودکار حساب WARP بساز",
     warpNote: "این outbound یک نمونهٔ کارکنِ WARP روی MASQUE است؛ همهٔ فیلدهایش را در تب «عبور از مسیر دیگر» می‌توانید ویرایش کنید. حساب خودکار از API غیررسمی Cloudflare استفاده می‌کند.",
     matches: "{n} مورد از {m} کانفیگ نمونهٔ شما مطابقت دارد", noMatchSample: "در مرحلهٔ ۲ یک اشتراک را امتحان کنید تا تعداد مطابقت‌ها را ببینید.",
@@ -156,7 +156,7 @@
     copy: "کپی", copied: "کپی شد", goTabs: "همه‌چیز را در تب‌های دیگر می‌توانید دقیق‌تر تنظیم کنید.",
     exp_drop_rule: "با قانون «{rule}» حذف شد", exp_drop: "حذف شد", exp_top: "به بالای لیست رفت («{rule}»)", exp_bottom: "به پایین لیست رفت («{rule}»)",
     exp_keep_rule: "با قانون «{rule}» نگه داشته شد", exp_kept: "همان‌طور که هست می‌ماند", exp_group: "در بالانسر «{g}» ادغام شد", exp_chain: "خروجی «{c}»",
-    colWhat: "چه می‌شود", noAccountYet: "زنجیرهٔ WARP با نام «{id}» هنوز در اینجا قابل نمایش نیست: به حساب WARP نیاز دارد. اگر حساب خودکار روشن باشد، حساب هر کاربر هنگام اولین دریافت ساب او ساخته می‌شود.",
+    colWhat: "چه می‌شود", chipsHint: "یک کلمه بنویسید و Enter بزنید. هر تعداد می‌توانید اضافه کنید.", noAccountYet: "زنجیرهٔ WARP با نام «{id}» هنوز در اینجا قابل نمایش نیست: به حساب WARP نیاز دارد. اگر حساب خودکار روشن باشد، حساب هر کاربر هنگام اولین دریافت ساب او ساخته می‌شود.",
     c_panel_url_ok: "آدرس پنل تنظیم شده است", c_panel_url_fail: "آدرس پنل تنظیم نشده است",
     c_panel_reach_ok: "پنل در دسترس است", c_panel_reach_warn: "پنل با خطا پاسخ داد (HTTP {code})",
     c_panel_reach_fail_connect: "اتصال به پنل ممکن نیست: آدرس یا پورت اشتباه است یا فایروال جلویش را گرفته",
@@ -553,8 +553,8 @@
     }
   }
 };
-  const wiz = { step: 0, hide: { on: false, text: "" }, bal: { on: false, text: "", split: "", type: "leastLoad" },
-    warp: { on: false, text: "", endpoints: WARP_ENDPOINTS.join("\n"), auto: true }, checks: null, running: false, done: false, connMsg: null };
+  const wiz = { step: 0, hide: { on: false, items: [] }, bal: { on: false, items: [], split: "", type: "leastLoad" },
+    warp: { on: false, items: [], endpoints: WARP_ENDPOINTS.join("\n"), auto: true }, checks: null, running: false, done: false, connMsg: null };
 
   function upsert(kind, item) {
     const l = (cfg[kind] = cfg[kind] || []);
@@ -562,18 +562,21 @@
     if (i >= 0) l[i] = item; else l.push(item);
   }
   function dropWiz(kind, id) { if (cfg[kind]) cfg[kind] = cfg[kind].filter((x) => x.id !== id); }
+  const escapeRegex = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // one text -> "contains"; several -> one case-insensitive pattern that matches any of them
+  const nameCond = (items) => ({ remark: items.length === 1 ? { icontains: items[0] } : { iregex: items.map(escapeRegex).join("|") } });
   function applyGoals() {
-    const hide = wiz.hide.text.trim(), bal = wiz.bal.text.trim(), warp = wiz.warp.text.trim();
-    if (wiz.hide.on && hide) upsert("rules", { id: "hide-configs", when: { remark: { icontains: hide } }, do: "drop" }); else dropWiz("rules", "hide-configs");
-    if (wiz.bal.on && bal) {
-      const g = { id: "balance-configs", when: { remark: { icontains: bal } }, type: wiz.bal.type, name: bal };
+    const hide = wiz.hide.items, bal = wiz.bal.items, warp = wiz.warp.items;
+    if (wiz.hide.on && hide.length) upsert("rules", { id: "hide-configs", when: nameCond(hide), do: "drop" }); else dropWiz("rules", "hide-configs");
+    if (wiz.bal.on && bal.length) {
+      const g = { id: "balance-configs", when: nameCond(bal), type: wiz.bal.type, name: bal.join(" + ") };
       if (wiz.bal.split.trim()) { g.split_by = { field: "remark", regex: wiz.bal.split.trim() }; g.name = "{split}"; }
       if (g.type === "leastLoad" || g.type === "leastPing") g.probe = { destination: "https://www.gstatic.com/generate_204", interval: "30s", timeout: "5s", sampling: 2 };
       upsert("groups", g);
     } else dropWiz("groups", "balance-configs");
-    if (wiz.warp.on && warp) {
+    if (wiz.warp.on && warp.length) {
       const eps = wiz.warp.endpoints.split(/[\s,]+/).filter(Boolean);
-      const chain = { id: "warp-chain", exit_when: { remark: { icontains: warp } }, entry: JSON.parse(JSON.stringify(WARP_ENTRY)) };
+      const chain = { id: "warp-chain", exit_when: nameCond(warp), entry: JSON.parse(JSON.stringify(WARP_ENTRY)) };
       if (eps.length) chain.choices = { endpoint: eps }; else chain.entry.settings.address = "";
       upsert("chains", chain);
       if (wiz.warp.auto) {
@@ -584,11 +587,32 @@
     } else dropWiz("chains", "warp-chain");
     changed();
   }
-  const matchCount = (text) => {
-    if (!sample || !text.trim()) return null;
-    const needle = text.trim().toLowerCase();
-    return sample.filter((c) => String(c.remarks ?? "").toLowerCase().includes(needle)).length;
+  const matchCount = (items) => {
+    if (!sample || !items.length) return null;
+    const needles = items.map((x) => x.toLowerCase());
+    return sample.filter((c) => { const r = String(c.remarks ?? "").toLowerCase(); return needles.some((n) => r.includes(n)); }).length;
   };
+  // a box where each typed text becomes a chip (Enter or comma adds it, Backspace on an empty box removes the last one)
+  function chipsInput(items, onChange, placeholder) {
+    const box = h("div", { class: "chips" });
+    const input = h("input", { type: "text", placeholder });
+    const add = (raw) => {
+      raw.split(/[,\n]/).map((x) => x.trim()).filter(Boolean).forEach((x) => { if (!items.includes(x)) items.push(x); });
+      input.value = ""; draw(); onChange();
+    };
+    function draw() {
+      box.replaceChildren(...items.map((x, i) => h("span", { class: "chip big" }, x,
+        h("button", { type: "button", "aria-label": "×", onclick: () => { items.splice(i, 1); draw(); onChange(); } }, "×"))), input);
+    }
+    input.addEventListener("keydown", (e) => {
+      if ((e.key === "Enter" || e.key === ",") && input.value.trim()) { e.preventDefault(); add(input.value); input.focus(); }
+      else if (e.key === "Backspace" && !input.value && items.length) { items.pop(); draw(); onChange(); input.focus(); }
+    });
+    input.addEventListener("blur", () => { if (input.value.trim()) add(input.value); });
+    input.addEventListener("paste", (e) => { const t = (e.clipboardData || window.clipboardData).getData("text"); if (/[,\n]/.test(t)) { e.preventDefault(); add(t); } });
+    draw();
+    return box;
+  }
 
   function checkText(c) {
     const a = Object.assign({}, c.args || {});
@@ -672,12 +696,11 @@
         const box = h("div", { class: "goal" + (g.on ? " on" : "") });
         const matchNote = h("p", { class: "hint" });
         const upd = () => {
-          const n = matchCount(g.text);
-          matchNote.textContent = g.text.trim() ? (n === null ? t("noMatchSample") : t("matches", { n, m: sample.length })) : "";
+          const n = matchCount(g.items);
+          matchNote.textContent = g.items.length ? (n === null ? t("noMatchSample") : t("matches", { n, m: sample.length })) : "";
         };
-        const txt = h("input", { type: "text", value: g.text, oninput: (e) => { g.text = e.target.value; upd(); } });
         box.append(h("label", { class: "check big" }, h("input", { type: "checkbox", checked: g.on, onchange: (e) => { g.on = e.target.checked; box.classList.toggle("on", g.on); } }), title),
-          h("div", { class: "goal-body" }, h("p", { class: "hint" }, help), txt, matchNote, extra ? extra() : null));
+          h("div", { class: "goal-body" }, h("p", { class: "hint" }, help), chipsInput(g.items, upd, t("chipsHint")), matchNote, extra ? extra() : null));
         upd();
         return box;
       };
