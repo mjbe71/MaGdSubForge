@@ -326,10 +326,11 @@ suggest_panel() {
 
 step_panel() {
   suggest_panel
+  EXISTING_URL=$(mf config-get panel.url 2>/dev/null || true)       # from an interrupted earlier run
   if [ -z "$PANEL_URL" ]; then
     if [ -n "$SUGGEST_URL" ]; then ok "Found a 3x-ui panel on this server."; fi
     interactive && echo "The panel's JSON-subscription address (see your 3x-ui settings; the user's id is added at the end)." >&2
-    PANEL_URL=$(ask "Panel JSON-subscription URL" "$SUGGEST_URL")
+    PANEL_URL=$(ask "Panel JSON-subscription URL" "${EXISTING_URL:-$SUGGEST_URL}")
   fi
   [ -n "$PANEL_URL" ] || die "A panel URL is required (use --panel-url)."
   case "$PANEL_URL" in http://*|https://*) ;; *) die "The panel URL must start with http:// or https://" ;; esac
@@ -514,7 +515,12 @@ summary() {
 do_install() {
   need_root
   local existed=0
-  [ -f "$CONFIG" ] && [ -d "$APP_DIR" ] && existed=1
+  # "installed" means the LAST step ran (it writes the `magdsubforge` command); a run that was interrupted earlier has
+  # left a config and program files behind but no command, and must be continued, not mistaken for a finished install
+  [ -f "$CONFIG" ] && [ -d "$APP_DIR" ] && [ -x "$BIN_DIR/magdsubforge" ] && existed=1
+  if [ "$existed" = 0 ] && { [ -f "$CONFIG" ] || [ -d "$APP_DIR" ]; }; then
+    warn "A previous installation was not finished. Continuing it."
+  fi
   say "MaGdSubForge installer"
   ensure_prereqs
   fetch_code
