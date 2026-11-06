@@ -90,8 +90,9 @@ class Menu(Base):
         self.assertEqual(self.conf()["groups"][0]["probe"], {"interval": "1m"})
 
     def test_admin_password(self):
-        with mock.patch("getpass.getpass", return_value="correct-horse"):
-            self.run_menu(["4", "1", "0"])
+        out = self.run_menu(["4", "1", "correct-horse", "0"])
+        self.assertIn("shown on screen", out)
+        self.run_menu(["4", "1", "short", "0"])                  # too short: nothing changes
         h = self.conf()["admin"]["password_hash"]
         from werkzeug.security import check_password_hash
         self.assertTrue(check_password_hash(h, "correct-horse"))

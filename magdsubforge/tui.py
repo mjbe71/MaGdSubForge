@@ -5,7 +5,6 @@ rules/groups/chains/patches (guided questions, or the item as JSON in your edito
 Every change is validated first and written atomically to config.json; the running service picks it up by itself.
 """
 import copy
-import getpass
 import json
 import os
 import re
@@ -61,6 +60,16 @@ def choose(title, options, back="Back"):
         if v.isdigit() and 1 <= int(v) <= len(options):
             return int(v) - 1
         say("Enter a number from the list.")
+
+
+def ask_password(prompt="New password (at least 8 characters)"):
+    """The password is typed in the open on purpose (typos are easier to spot); say so. -> str, or None if too short."""
+    say("Note: the password is shown on screen while you type it. Make sure nobody is watching.")
+    pw = ask(prompt)
+    if len(pw) < 8:
+        say("Too short (8 or more characters); nothing changed.")
+        return None
+    return pw
 
 
 class Menu:
@@ -314,9 +323,8 @@ class Menu:
                                        "Turn the web admin off (remove the password)"])
         if i == 0:
             from werkzeug.security import generate_password_hash
-            pw = getpass.getpass("New password (8+ characters): ")
-            if len(pw) < 8 or pw != getpass.getpass("Again: "):
-                say("Too short or different; nothing changed.")
+            pw = ask_password()
+            if pw is None:
                 return
 
             def setpw(r):

@@ -114,13 +114,13 @@ def main(argv=None):
         return 0
 
     if a.cmd == "set-admin-password":
-        import getpass
         from werkzeug.security import generate_password_hash
         path = _path(a.config)
-        pw = sys.stdin.readline().rstrip("\n") if a.stdin else getpass.getpass("New admin password: ")
-        if not a.stdin and pw != getpass.getpass("Again: "):
-            print("The passwords differ; nothing changed.", file=sys.stderr)
-            return 1
+        if a.stdin:
+            pw = sys.stdin.readline().rstrip("\n")
+        else:
+            from .tui import ask_password
+            pw = ask_password("New admin password (at least 8 characters)") or ""
         if len(pw) < 8:
             print("Use at least 8 characters; nothing changed.", file=sys.stderr)
             return 1

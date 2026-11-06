@@ -51,14 +51,6 @@ yesno() {                                 # yesno "question" y|n -> status 0 = y
   IFS= read -r a <"$TTY" || a=""
   case "${a:-$d}" in y|Y|yes|YES|Yes) return 0 ;; *) return 1 ;; esac
 }
-ask_secret() {
-  local a=""
-  printf '%s: ' "$1" >&2
-  IFS= read -rs a <"$TTY" || a=""
-  printf '\n' >&2
-  printf '%s' "$a"
-}
-
 usage() {
   cat <<EOF
 MaGdSubForge installer
@@ -376,10 +368,9 @@ step_admin() {
   local pw=${MAGD_ADMIN_PASSWORD:-} pw2
   if [ -z "$pw" ]; then
     interactive || die "Set MAGD_ADMIN_PASSWORD to use --admin without questions."
+    warn "The password is shown on screen while you type it (so you can see typos). Make sure nobody is watching."
     while :; do
-      pw=$(ask_secret "Choose an admin password (at least 8 characters)")
-      pw2=$(ask_secret "Repeat it")
-      if [ "$pw" != "$pw2" ]; then warn "They differ; try again."; continue; fi
+      pw=$(ask "Choose an admin password (at least 8 characters)" "")
       [ "${#pw}" -ge 8 ] || { warn "Too short; try again."; continue; }
       break
     done
