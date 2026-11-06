@@ -111,7 +111,7 @@
     copy: "Copy", copied: "Copied", goTabs: "You can fine-tune everything in the other tabs.",
     exp_drop_rule: "Removed by rule \"{rule}\"", exp_drop: "Removed", exp_top: "Moved to the top (\"{rule}\")", exp_bottom: "Moved to the bottom (\"{rule}\")",
     exp_keep_rule: "Kept by rule \"{rule}\"", exp_kept: "Kept as it is", exp_group: "Merged into balancer \"{g}\"", exp_chain: "Exit of \"{c}\"",
-    colWhat: "What happens", chipsHint: "Type a word, press Enter. Add as many as you like.", noAccountYet: "The WARP chain \"{id}\" cannot be shown here yet: it needs a WARP account. With automatic accounts on, each user's account is created the first time they fetch their subscription.",
+    colWhat: "What happens", chipsHint: "Type a word, then press Enter or +. Add as many as you like.", addWord: "+ Add", noAccountYet: "The WARP chain \"{id}\" cannot be shown here yet: it needs a WARP account. With automatic accounts on, each user's account is created the first time they fetch their subscription.",
     c_panel_url_ok: "Panel address is set", c_panel_url_fail: "The panel address is not set",
     c_panel_reach_ok: "The panel is reachable", c_panel_reach_warn: "The panel answered with an error (HTTP {code})",
     c_panel_reach_fail_connect: "Cannot connect to the panel: wrong address or port, or a firewall is blocking it",
@@ -156,7 +156,7 @@
     copy: "کپی", copied: "کپی شد", goTabs: "همه‌چیز را در تب‌های دیگر می‌توانید دقیق‌تر تنظیم کنید.",
     exp_drop_rule: "با قانون «{rule}» حذف شد", exp_drop: "حذف شد", exp_top: "به بالای لیست رفت («{rule}»)", exp_bottom: "به پایین لیست رفت («{rule}»)",
     exp_keep_rule: "با قانون «{rule}» نگه داشته شد", exp_kept: "همان‌طور که هست می‌ماند", exp_group: "در بالانسر «{g}» ادغام شد", exp_chain: "خروجی «{c}»",
-    colWhat: "چه می‌شود", chipsHint: "یک کلمه بنویسید و Enter بزنید. هر تعداد می‌توانید اضافه کنید.", noAccountYet: "زنجیرهٔ WARP با نام «{id}» هنوز در اینجا قابل نمایش نیست: به حساب WARP نیاز دارد. اگر حساب خودکار روشن باشد، حساب هر کاربر هنگام اولین دریافت ساب او ساخته می‌شود.",
+    colWhat: "چه می‌شود", chipsHint: "یک کلمه بنویسید و Enter یا «+ افزودن» را بزنید. هر تعداد می‌توانید اضافه کنید.", addWord: "+ افزودن", noAccountYet: "زنجیرهٔ WARP با نام «{id}» هنوز در اینجا قابل نمایش نیست: به حساب WARP نیاز دارد. اگر حساب خودکار روشن باشد، حساب هر کاربر هنگام اولین دریافت ساب او ساخته می‌شود.",
     c_panel_url_ok: "آدرس پنل تنظیم شده است", c_panel_url_fail: "آدرس پنل تنظیم نشده است",
     c_panel_reach_ok: "پنل در دسترس است", c_panel_reach_warn: "پنل با خطا پاسخ داد (HTTP {code})",
     c_panel_reach_fail_connect: "اتصال به پنل ممکن نیست: آدرس یا پورت اشتباه است یا فایروال جلویش را گرفته",
@@ -594,24 +594,29 @@
   };
   // a box where each typed text becomes a chip (Enter or comma adds it, Backspace on an empty box removes the last one)
   function chipsInput(items, onChange, placeholder) {
+    const wrap = h("div", { class: "chips-wrap" });
     const box = h("div", { class: "chips" });
-    const input = h("input", { type: "text", placeholder });
+    const input = h("input", { type: "text", placeholder, autocomplete: "off" });
+    const SEP = /[,،;؛\n]/;                                  // Latin and Persian comma / semicolon, new line
     const add = (raw) => {
-      raw.split(/[,\n]/).map((x) => x.trim()).filter(Boolean).forEach((x) => { if (!items.includes(x)) items.push(x); });
-      input.value = ""; draw(); onChange();
+      raw.split(SEP).map((x) => x.trim()).filter(Boolean).forEach((x) => { if (!items.includes(x)) items.push(x); });
+      input.value = ""; draw(); onChange(); input.focus();
     };
     function draw() {
       box.replaceChildren(...items.map((x, i) => h("span", { class: "chip big" }, x,
         h("button", { type: "button", "aria-label": "×", onclick: () => { items.splice(i, 1); draw(); onChange(); } }, "×"))), input);
     }
+    // keydown covers Enter on all keyboards; the input event covers a typed or pasted separator whatever the layout / IME sends
     input.addEventListener("keydown", (e) => {
-      if ((e.key === "Enter" || e.key === ",") && input.value.trim()) { e.preventDefault(); add(input.value); input.focus(); }
+      if (e.key === "Enter" || e.keyCode === 13) { e.preventDefault(); if (input.value.trim() && !e.isComposing) add(input.value); }
       else if (e.key === "Backspace" && !input.value && items.length) { items.pop(); draw(); onChange(); input.focus(); }
     });
+    input.addEventListener("input", (e) => { if (!e.isComposing && SEP.test(input.value)) add(input.value); });
+    input.addEventListener("compositionend", () => { if (SEP.test(input.value)) add(input.value); });
     input.addEventListener("blur", () => { if (input.value.trim()) add(input.value); });
-    input.addEventListener("paste", (e) => { const t = (e.clipboardData || window.clipboardData).getData("text"); if (/[,\n]/.test(t)) { e.preventDefault(); add(t); } });
     draw();
-    return box;
+    return h("div", { class: "chips-row" }, box,
+      h("button", { type: "button", class: "chips-add", onclick: () => { if (input.value.trim()) add(input.value); else input.focus(); } }, t("addWord")));
   }
 
   function checkText(c) {
