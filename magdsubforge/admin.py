@@ -121,6 +121,86 @@ def _accounts_for(app, clean):
     return {"default": default, "users": data["users"]}
 
 
+def _check(cid, status, text, **args):
+    return {"id": cid, "status": status, "text": text, "args": args}
+
+
+def run_checks(app, conf, clean, problems, subid, secure_request):
+    """The setup wizard's health checks for the candidate configuration `clean` (normalized). Each item:
+    {id, status: ok|warn|fail|skip, text (English fallback), args}. Never raises."""
+    import requests
+    out = []
+    panel = clean["panel"]
+    if not panel["url"]:
+        out.append(_check("panel_url", "fail", "The panel address is not set."))
+    else:
+        out.append(_check("panel_url", "ok", "The panel address is set."))
+        try:
+            r = requests.get(panel["url"], headers=panel["headers"], timeout=min(float(panel["timeout"]), 8),
+                             verify=panel["verify_tls"])
+            if r.status_code >= 500:
+                out.append(_check("panel_reach", "warn", "The panel answered with an error (HTTP %d)." % r.status_code, code=r.status_code))
+            else:
+                out.append(_check("panel_reach", "ok", "The panel is reachable (HTTP %d)." % r.status_code, code=r.status_code))
+        except requests.exceptions.SSLError:
+            out.append(_check("panel_reach", "fail", "Reached the panel but its TLS certificate is not trusted. "
+                              "Fix the certificate or turn off 'Verify TLS certificate'.", kind="tls"))
+        except requests.exceptions.Timeout:
+            out.append(_check("panel_reach", "fail", "The panel did not answer in time.", kind="timeout"))
+        except requests.RequestException:
+            out.append(_check("panel_reach", "fail", "Cannot connect to the panel (wrong address or port, or a firewall).", kind="connect"))
+        if subid:
+            try:
+                _, configs, _ = fetch_panel(panel, subid)
+                out.append(_check("sample", "ok", "The panel returned %d config(s) for this id." % len(configs), n=len(configs)))
+            except PanelError as e:
+                out.append(_check("sample", "fail", "The panel refused this subscription id: %s" % e.message, reason=e.message))
+        else:
+            out.append(_check("sample", "skip", "Not tested: no subscription id given."))
+    srv = conf["server"]
+    if srv["tls_cert"]:
+        from . import xui
+        info = xui.cert_info(srv["tls_cert"]) if os.path.isfile(srv["tls_cert"]) else None
+        if not info:
+            out.append(_check("https", "fail", "HTTPS is on but the certificate file cannot be read.", kind="unreadable"))
+        elif info["days"] is not None and info["days"] < 15:
+            out.append(_check("https", "warn", "The HTTPS certificate expires in %d day(s)." % info["days"], days=info["days"]))
+        else:
+            out.append(_check("https", "ok", "HTTPS is on (certificate valid for %s more days)." % info["days"], days=info["days"]))
+    elif secure_request:
+        out.append(_check("https", "ok", "Reached over HTTPS (probably through a reverse proxy).", kind="proxy"))
+    else:
+        out.append(_check("https", "warn", "Users would reach the subscription over plain HTTP. Set up HTTPS: run 'sudo magdsubforge tls'.", kind="off"))
+    a = conf["admin"]
+    if a["password"] and not a["password_hash"]:
+        out.append(_check("admin_pw", "warn", "The admin password is stored as plain text. Set it again with 'sudo magdsubforge set-admin-password'."))
+    else:
+        out.append(_check("admin_pw", "ok", "The admin password is stored safely."))
+    errors, warnings = split_problems(problems)
+    if errors:
+        out.append(_check("config", "fail", "%d problem(s) in the settings." % len(errors), problems=errors, n=len(errors)))
+    elif warnings:
+        out.append(_check("config", "warn", "%d note(s) about the settings." % len(warnings), problems=warnings, n=len(warnings)))
+    else:
+        out.append(_check("config", "ok", "The settings are valid."))
+    uses_account = any("{account." in json.dumps(c.get("entry", {})) for c in clean["chains"] if c.get("enabled", True))
+    if uses_account:
+        acc = clean["accounts"]
+        have = app.accounts.get()
+        if acc["register"]["enabled"]:
+            folder = os.path.dirname(os.path.abspath(app.accounts._file_path(acc["file"]))) if acc["file"] else ""
+            if folder and os.access(folder, os.W_OK):
+                out.append(_check("accounts", "ok", "WARP accounts will be created automatically for each new user."))
+            else:
+                out.append(_check("accounts", "fail", "Automatic accounts need a writable folder for the accounts file.", kind="unwritable"))
+        elif have["default"] or have["users"]:
+            out.append(_check("accounts", "ok", "The chain has account values to use."))
+        else:
+            out.append(_check("accounts", "fail", "A chain needs account values ({account.*}) but there are none: "
+                              "turn on automatic accounts or fill the accounts file.", kind="none"))
+    return out
+
+
 def register(app, store):
     base = store.get()["admin"]["path"].rstrip("/") or "/admin"
     lockout = Lockout()
@@ -286,6 +366,17 @@ def register(app, store):
         return reply({"ok": True, "warnings": warnings})
 
     @guarded
+    def checks(conf, sess):
+        data = body()
+        cand = candidate(data)
+        clean, problems = normalize(cand) if cand is not None else (conf, [])
+        subid = data.get("subid") if isinstance(data.get("subid"), str) and data.get("subid") else None
+        if subid and not re.search(conf["server"]["subid_regex"], subid):
+            subid = None
+        secure_req = request.is_secure or request.headers.get("X-Forwarded-Proto") == "https"
+        return reply({"checks": run_checks(app, conf, clean, problems, subid, secure_req)})
+
+    @guarded
     def register_account(conf, sess):
         from .warp import ApiError
         data = body()
@@ -301,5 +392,5 @@ def register(app, store):
     for name, fn, methods in (("login", login, ["POST"]), ("logout", logout, ["POST"]), ("me", me, ["GET"]),
                               ("state", state, ["GET"]), ("preview", preview, ["POST"]),
                               ("sample", sample, ["POST"]), ("save", save, ["POST"]),
-                              ("register-account", register_account, ["POST"])):
+                              ("register-account", register_account, ["POST"]), ("checks", checks, ["POST"])):
         app.add_url_rule("%s/api/%s" % (base, name), "admin_api_" + name, fn, methods=methods)

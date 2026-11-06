@@ -162,3 +162,52 @@ class Admin(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Checks(unittest.TestCase):
+    def setUp(self):
+        self.app, self.path = make({"admin": {"password_hash": generate_password_hash(PW)}})
+        self.c = self.app.test_client()
+        _, self.csrf = login(self.c)
+
+    def run_checks(self, cfg, subid=None):
+        r = self.c.post("/admin/api/checks", json={"config": cfg, "subid": subid}, headers={"X-CSRF-Token": self.csrf})
+        self.assertEqual(r.status_code, 200)
+        return {c["id"]: c for c in r.get_json()["checks"]}
+
+    def test_needs_login(self):
+        self.assertEqual(self.app.test_client().post("/admin/api/checks", json={}).status_code, 401)
+
+    def test_no_panel_url(self):
+        c = self.run_checks({})
+        self.assertEqual(c["panel_url"]["status"], "fail")
+        self.assertNotIn("panel_reach", c)
+        self.assertEqual(c["https"]["status"], "warn")
+        self.assertEqual(c["config"]["status"], "ok")
+
+    def test_unreachable_panel(self):
+        c = self.run_checks({"panel": {"url": "http://127.0.0.1:1/json/"}})
+        self.assertEqual(c["panel_reach"]["status"], "fail")
+        self.assertEqual(c["panel_reach"]["args"]["kind"], "connect")
+
+    def test_reachable_panel_and_sample(self):
+        resp = mock.Mock(status_code=404)
+        with mock.patch("requests.get", return_value=resp), \
+                mock.patch("magdsubforge.admin.fetch_panel", return_value=(None, [{}, {}, {}], None)):
+            c = self.run_checks({"panel": {"url": "http://panel.invalid/json/"}}, subid="abcdef12")
+        self.assertEqual(c["panel_reach"]["status"], "ok")
+        self.assertEqual(c["sample"]["args"]["n"], 3)
+
+    def test_bad_config_and_chain_without_accounts(self):
+        cfg = {"rules": [{"id": "x", "do": "nope"}],
+               "chains": [{"id": "w", "entry": {"protocol": "masque", "k": "{account.privateKey}"}}]}
+        c = self.run_checks(cfg)
+        self.assertEqual(c["config"]["status"], "fail")
+        self.assertEqual(c["accounts"]["status"], "fail")
+        cfg["accounts"] = {"file": "accounts.json", "register": {"enabled": True}}
+        c = self.run_checks(cfg)
+        self.assertEqual(c["accounts"]["status"], "ok")
+
+    def test_secure_request_counts_as_https(self):
+        r = self.c.post("/admin/api/checks", json={"config": {}}, headers={"X-CSRF-Token": self.csrf, "X-Forwarded-Proto": "https"})
+        self.assertEqual({c["id"]: c for c in r.get_json()["checks"]}["https"]["status"], "ok")

@@ -65,3 +65,30 @@ th, td { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: sta
 [dir=rtl] .tabs, [dir=rtl] .row { direction: rtl; }
 input[type=text], input[type=number], input[type=password] { direction: ltr; text-align: start; }
 [dir=rtl] input[type=text], [dir=rtl] input[type=number] { text-align: left; }
+
+.summary { margin: 0 0 8px; color: var(--muted); font-size: 13px; }
+.fpick { display: flex; flex-direction: column; gap: 4px; }
+.steps { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.step { display: flex; gap: 6px; align-items: center; }
+.step b { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--code); border: 1px solid var(--line); font-size: 12px; }
+.step.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
+.step.on b { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.step.past b { background: var(--ok); color: #fff; border-color: var(--ok); }
+.wiz > p { margin: 0 0 10px; }
+.wiz h2 { margin: 0 0 8px; font-size: 18px; }
+.goal { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 10px 0; background: var(--bg); }
+.goal.on { border-color: var(--accent); }
+.goal-body { display: none; margin-top: 8px; }
+.goal.on .goal-body { display: block; }
+.goal-body input[type=text] { width: 100%; }
+label.check.big { font-weight: 600; font-size: 15px; }
+.checks { margin: 6px 0; }
+.check-row { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border-radius: 6px; margin: 4px 0; font-size: 14px; }
+.check-row .ci { font-weight: 700; width: 18px; text-align: center; flex: none; }
+.check-row.ok .ci { color: var(--ok); } .check-row.warn .ci { color: var(--warn); } .check-row.fail .ci { color: var(--danger); } .check-row.skip .ci { color: var(--muted); }
+.check-row.fail { background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.check-row.warn { background: color-mix(in srgb, var(--warn) 10%, transparent); }
+.check-row ul { margin: 4px 0 0; padding-inline-start: 18px; font-size: 13px; }
+.msg.ok { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
+ul.plain { margin: 6px 0; padding-inline-start: 18px; font-size: 13px; }
+.big-note { font-weight: 600; }

@@ -119,8 +119,7 @@ python -m magdsubforge hash-password        # asks for a password, prints a hash
 { "admin": { "password_hash": "<paste the hash here>" } }
 ```
 
-Then open `http://127.0.0.1:8080/admin` (path: `admin.path`) and log in. You get forms for rules, groups, patches and
-the server/panel settings (plus a raw JSON editor), and a **live preview**: enter a subscription id, fetch the panel's
+Then open `http://127.0.0.1:8080/admin` (path: `admin.path`) and log in. The **Start** page is a step-by-step setup guide that checks everything (is the panel reachable, does a test subscription work, HTTPS, accounts, settings) and can create common setups for you (hide configs, balance configs, route through WARP). The other tabs are forms for filters, balancers, chains, advanced edits and settings (plus a raw JSON editor), and a **live preview** that explains in words what happens to each config: enter a subscription id, fetch the panel's
 real response, and watch what every config becomes as you edit. **Save** writes `config.json`; changes apply at once.
 English and Persian (right-to-left) are built in.
 
