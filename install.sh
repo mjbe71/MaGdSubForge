@@ -370,6 +370,8 @@ write_service_files() {
 #!/bin/sh
 # Manage MaGdSubForge. Run "magdsubforge help".
 export MAGDSUBFORGE_CONFIG="$CONFIG"
+export MAGD_CTL="$BIN_DIR/magdsubforge"
+if [ -z "\$1" ] && [ -t 0 ]; then set -- menu; fi
 case "\${1:-help}" in
   update|tls|uninstall|sync-certs) exec "$APP_DIR/install.sh" "\$@" ;;
   status)  exec systemctl status magdsubforge ;;
@@ -379,6 +381,7 @@ case "\${1:-help}" in
   logs)    exec journalctl -u magdsubforge -n 100 -f ;;
   help|-h|--help)
     cat <<'TXT'
+magdsubforge                         interactive menu (everything below, and more)
 magdsubforge status | start | stop | restart | logs
 magdsubforge update                  get the newest version
 magdsubforge tls                     set up or change HTTPS (certificate files or Let's Encrypt)

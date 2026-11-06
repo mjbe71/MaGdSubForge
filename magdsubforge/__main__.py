@@ -1,5 +1,6 @@
 """Command line:
 
+    python -m magdsubforge menu [--config FILE]        interactive terminal menu (also: just `magdsubforge`)
     python -m magdsubforge serve                       development server (use gunicorn in production)
     python -m magdsubforge check [config.json]         validate a configuration
     python -m magdsubforge hash-password               make a value for admin.password_hash
@@ -85,6 +86,8 @@ def main(argv=None):
     cs.add_argument("--unset", action="store_true")
     cs.add_argument("--config")
     sub.add_parser("detect-xui")
+    mn = sub.add_parser("menu")
+    mn.add_argument("--config")
     ra = sub.add_parser("register-account")
     ra.add_argument("--subid", help="save it as this subscription id's account (default: the shared account)")
     ra.add_argument("--force", action="store_true", help="replace an existing account")
@@ -95,6 +98,10 @@ def main(argv=None):
     p.add_argument("--subid", help="use this subscription id's personal account values")
     p.add_argument("--full", action="store_true", help="print the resulting configs too")
     a = ap.parse_args(argv)
+
+    if a.cmd == "menu":
+        from . import tui
+        return tui.run(_path(a.config))
 
     if a.cmd == "hash-password":
         import getpass

@@ -42,6 +42,8 @@ sudo magdsubforge help        # status, logs, restart, update, tls (change HTTPS
 sudo magdsubforge update      # get the newest version, keeping your settings
 ```
 
+Run `sudo magdsubforge` with no arguments for an **interactive terminal menu** (English): service status/logs/restart/update, panel URL, port and HTTPS, the admin password, adding/editing/reordering rules, groups, chains and patches with guided questions (or as JSON in your editor), a live preview for a subscription id, and WARP accounts. Every change is validated before it is written.
+
 Everything can also be given as options for unattended installs (`--panel-url`, `--domain`, `--cert`/`--key`,
 `--letsencrypt`, `--port`, `--admin`, `--yes`, ...): run `install.sh --help`. Settings live in
 `/etc/magdsubforge/config.json`, the program in `/opt/magdsubforge`. To remove it: `sudo magdsubforge uninstall`.
