@@ -411,7 +411,7 @@ magdsubforge tls                     set up or change HTTPS (certificate files o
 magdsubforge set-admin-password      set or change the admin password
 magdsubforge config-set KEY=VALUE    change a setting (e.g. server.port=8443)
 magdsubforge check                   validate the configuration
-magdsubforge uninstall [--purge]
+magdsubforge uninstall [--purge]       remove it (also in the menu)
 TXT
     ;;
   *) cd "$APP_DIR" && exec "$APP_DIR/venv/bin/python" -m magdsubforge "\$@" ;;
@@ -578,6 +578,11 @@ do_uninstall() {
     rm -f "$UNIT_DIR"/magdsubforge.service "$UNIT_DIR"/magdsubforge-certsync.service "$UNIT_DIR"/magdsubforge-certsync.timer
     systemctl daemon-reload || true
   fi
+  # a certbot renewal that still calls our (now deleted) sync script would report an error on every renewal
+  local f
+  for f in /etc/letsencrypt/renewal/*.conf; do
+    [ -f "$f" ] && grep -q "$APP_DIR/install.sh" "$f" 2>/dev/null && sed -i "\#$APP_DIR/install.sh#d" "$f" || true
+  done
   rm -f "$BIN_DIR/magdsubforge"
   rm -rf "$APP_DIR"
   if [ "$PURGE" = 1 ]; then rm -rf "$CONF_DIR"; id "$SVC_USER" >/dev/null 2>&1 && userdel "$SVC_USER" || true; fi

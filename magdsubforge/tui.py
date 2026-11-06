@@ -225,7 +225,8 @@ class Menu:
                  ("Preview the result for a subscription id", self.preview),
                  ("WARP accounts", self.accounts_menu),
                  ("Edit the whole config.json in your editor", self.edit_all),
-                 ("Check the configuration", self.check)]
+                 ("Check the configuration", self.check),
+                 ("Uninstall MaGdSubForge from this server", self.uninstall)]
         while True:
             self.header()
             i = choose("Main menu", [x[0] for x in items], back="Quit")
@@ -501,6 +502,22 @@ class Menu:
                 say("Already has an account." if new_id is None else "Account created (device %s)." % new_id)
             except (ApiError, ValueError, OSError) as e:
                 say("Could not create the account: %s" % e)
+
+    def uninstall(self):
+        if not self.ctl:
+            say("Not available: this works when installed with install.sh. (Otherwise just delete the folder.)")
+            return
+        i = choose("Uninstall", ["Remove the program and the service, KEEP my settings and certificates (config.json)",
+                                 "Remove EVERYTHING (program, service, settings, certificate copies, service user)"])
+        if i is None:
+            return
+        say("\nThis stops the subscription service: users will no longer get their subscriptions from this server.")
+        say("Not touched: the 3x-ui panel, and certificates that Let's Encrypt/certbot or 3x-ui keep for themselves.")
+        if ask("Type 'yes' to continue") != "yes":
+            say("Nothing removed.")
+            return
+        self.run_ctl("uninstall", "--yes", *(["--purge"] if i == 1 else []))
+        raise Quit()
 
     def edit_all(self):
         new = self.edit_json(self.raw(), "Editing the whole config.json (the admin section included).")

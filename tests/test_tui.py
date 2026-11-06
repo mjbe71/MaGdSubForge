@@ -112,6 +112,18 @@ class Menu(Base):
         self.assertTrue(a["register"]["enabled"])
         self.assertEqual(a["file"], "accounts.json")
 
+    def test_uninstall_asks_and_delegates(self):
+        calls = []
+        with mock.patch.object(tui.Menu, "run_ctl", lambda self, *a: calls.append(a)), \
+                mock.patch.dict(os.environ, {"MAGD_CTL": "/x/magdsubforge"}):
+            self.run_menu(["10", "2", "no", "0"])                     # not confirmed
+            self.assertEqual(calls, [])
+            self.run_menu(["10", "2", "yes"])                         # everything
+            self.assertEqual(calls, [("uninstall", "--yes", "--purge")])
+            calls.clear()
+            self.run_menu(["10", "1", "yes"])
+            self.assertEqual(calls, [("uninstall", "--yes")])
+
     def test_no_tty_refuses(self):
         with mock.patch("sys.stdin.isatty", return_value=False):
             self.assertEqual(cli(["menu", "--config", self.path]), 1)
