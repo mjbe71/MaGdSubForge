@@ -16,9 +16,44 @@ client app ──► MaGdSubForge ──► your 3x-ui panel (JSON subscription)
 
 > Early release (v0.1). Covered by automated tests, but not yet used in production by many people. Not affiliated with 3x-ui.
 
-## Quick start
+## Install on a server (one command)
 
-You need Python 3 or Docker (gunicorn, used for production, runs on Linux and macOS), and a 3x-ui panel with the **JSON subscription** enabled.
+On a Linux server (Debian/Ubuntu: everything else is installed for you), as root:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mjbe71/MaGdSubForge/main/install.sh | sudo bash
+```
+
+The installer asks what it needs and does the rest. In order:
+
+1. **Panel address.** If a 3x-ui panel runs on the same server, it suggests the address of its JSON subscription.
+2. **HTTPS.** Enter the domain users will connect to. Then, in this order:
+   your own certificate files, if you give their paths; otherwise a certificate that already exists on the
+   server (3x-ui's); otherwise it gets a **free Let's Encrypt certificate** for the domain (the domain must already
+   point to this server, and port 80 must be free for a minute). Certificates are checked (valid, not expired,
+   key matches, covers the domain) and renewals are picked up automatically. Press Enter at the domain question to
+   skip HTTPS (plain HTTP on localhost only).
+3. **Port**, and whether to enable the **web admin panel** (and its password).
+
+Then it creates a service that starts at boot and prints your subscription link. Afterwards:
+
+```bash
+sudo magdsubforge help        # status, logs, restart, update, tls (change HTTPS), set-admin-password, ...
+sudo magdsubforge update      # get the newest version, keeping your settings
+```
+
+Everything can also be given as options for unattended installs (`--panel-url`, `--domain`, `--cert`/`--key`,
+`--letsencrypt`, `--port`, `--admin`, `--yes`, ...): run `install.sh --help`. Settings live in
+`/etc/magdsubforge/config.json`, the program in `/opt/magdsubforge`. To remove it: `sudo magdsubforge uninstall`.
+
+> The installer has been tested with simulated servers (fake 3x-ui database, test certificates, a stand-in for
+> certbot), but not yet on a fresh real server, and the Let's Encrypt step has not been run against the real service.
+> The 3x-ui detection reads setting names from memory of 3x-ui; if it finds nothing, it just asks you.
+> Please report problems.
+
+## Manual install
+
+You need Python 3.9+ (or Docker) and a 3x-ui panel with the **JSON subscription** enabled.
 
 ```bash
 git clone https://github.com/mjbe71/MaGdSubForge && cd MaGdSubForge
@@ -46,13 +81,14 @@ prints what each config in a saved panel response becomes under `examples/balanc
 ### Production
 
 ```bash
-gunicorn app:app        # address, port and workers are read from config.json ("server")
+gunicorn app:app        # address, port, workers and HTTPS (server.tls_cert / tls_key) come from config.json
 ```
 
 or Docker: `mkdir -p data && cp config.json data/ && docker compose up -d --build` (the right-hand port in
 `docker-compose.yml` must match `server.port`). The Docker files are not yet tested by the author; please report problems.
 
-Put a reverse proxy with HTTPS in front and **turn its access log off**: the URL contains each user's secret id.
+For HTTPS either set `server.tls_cert` and `server.tls_key` (what the installer does) or put a reverse proxy
+with HTTPS in front and **turn its access log off**: the URL contains each user's secret id.
 
 ```nginx
 server {

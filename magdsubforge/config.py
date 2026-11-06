@@ -21,6 +21,7 @@ DEFAULTS = {
         "route": "/sub/",                        # public path; the subscription id is appended
         "subid_regex": r"^[A-Za-z0-9_-]{4,64}$",  # ids that don't match get a 404 without asking the panel
         "workers": 2, "threads": 4,              # used by gunicorn.conf.py
+        "tls_cert": "", "tls_key": "",           # serve HTTPS directly: paths of the certificate (fullchain) and key
     },
     "panel": {
         "url": "",                               # JSON-subscription URL of your panel, the id is appended
@@ -80,6 +81,8 @@ SECTION_CHECKS = {
         "subid_regex": (_regex_ok, "a valid regular expression"),
         "workers": (lambda v: _is_int(v) and v >= 1, "an integer >= 1"),
         "threads": (lambda v: _is_int(v) and v >= 1, "an integer >= 1"),
+        "tls_cert": (lambda v: isinstance(v, str), "a file path (string)"),
+        "tls_key": (lambda v: isinstance(v, str), "a file path (string)"),
     },
     "panel": {
         "url": (_url_ok, "an http(s) URL or an empty string"),
@@ -240,6 +243,9 @@ def normalize(raw):
         if k not in DEFAULTS and not k.startswith("_"):
             problems.append("%s: unknown key; ignored" % k)
     _section("server", raw.get("server"), conf, problems)
+    if bool(conf["server"]["tls_cert"]) != bool(conf["server"]["tls_key"]):
+        problems.append("server.tls_cert and server.tls_key: set both or neither; HTTPS stays off")
+        conf["server"]["tls_cert"] = conf["server"]["tls_key"] = ""
     _section("panel", raw.get("panel"), conf, problems)
     _section("admin", raw.get("admin"), conf, problems)
     _section("accounts", raw.get("accounts"), conf, problems)

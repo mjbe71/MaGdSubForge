@@ -26,6 +26,7 @@ panel response ──► patches (stage "source") ──► rules ──► grou
 | `route` | `"/sub/"` | Public path; the subscription id is appended. Needs a restart to change. |
 | `subid_regex` | `"^[A-Za-z0-9_-]{4,64}$"` | Ids not matching this get a 404 without contacting the panel. |
 | `workers`, `threads` | `2`, `4` | Used by gunicorn (`gunicorn.conf.py`). |
+| `tls_cert`, `tls_key` | `""` | Serve HTTPS directly: paths of the certificate (full chain) and the private key; set both or neither. The service user must be able to read them (the installer keeps copies in `/etc/magdsubforge/certs`). Needs a restart. |
 
 ## `admin`
 

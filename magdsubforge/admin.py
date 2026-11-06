@@ -95,7 +95,12 @@ def _write_atomic(path, data):
             json.dump(data, f, indent=2, ensure_ascii=False)
             f.write("\n")
         if os.path.exists(path):
-            os.chmod(tmp, os.stat(path).st_mode & 0o777)
+            st = os.stat(path)
+            os.chmod(tmp, st.st_mode & 0o777)
+            try:                                   # run as root (installer), the service user must still own the file
+                os.chown(tmp, st.st_uid, st.st_gid)
+            except (PermissionError, AttributeError):
+                pass
         else:
             os.chmod(tmp, 0o600)
         os.replace(tmp, path)
