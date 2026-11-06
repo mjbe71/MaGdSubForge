@@ -273,16 +273,38 @@ step_tls() {                              # decides HTTPS; sets TLS_OK=1 when ce
     interactive || die "The given certificate cannot be used."
   fi
 
-  # 2) a certificate that already exists on this machine (3x-ui / x-ui)
+  # 2) a certificate that already exists on this machine (3x-ui / x-ui / acme.sh / certbot ...)
   if [ "$WANT_LE" != 1 ] && [ -x "$APP_DIR/venv/bin/python" ]; then
-    local label c k rc
-    while IFS=$'\t' read -r label c k; do
+    local c k covers days names rc others=""
+    while IFS=$'\t' read -r c k covers days names; do
       [ -n "$c" ] || continue
-      rc=0; check_cert "$c" "$k" "$DOMAIN" >/dev/null 2>&1 || rc=$?
-      [ $rc = 0 ] || continue
-      ok "Found a valid certificate for $DOMAIN: $label"
-      if yesno "Use it?" y; then set_cert_source "$c" "$k"; sync_certs; TLS_OK=1; return 0; fi
-    done < <(mf detect-xui --certs 2>/dev/null || true)
+      if [ "$covers" = yes ] && [ -n "$k" ]; then
+        rc=0; check_cert "$c" "$k" "$DOMAIN" >/dev/null 2>&1 || rc=$?
+        if [ $rc = 0 ]; then
+          ok "Found a valid certificate for $DOMAIN: $c (${days:-?} days left)"
+          if yesno "Use it?" y; then set_cert_source "$c" "$k"; sync_certs; TLS_OK=1; return 0; fi
+          continue
+        fi
+        others="$others\n    $c  [covers $DOMAIN but is not usable: expired or its key does not match]"
+      else
+        others="$others\n    $c  [for: ${names:-?}$([ -n "$k" ] || echo "; no matching private key found")]"
+      fi
+    done < <(mf detect-xui --scan "$DOMAIN" 2>/dev/null || true)
+    if [ -n "$others" ]; then
+      echo >&2
+      say "Certificates found on this machine that cannot be used for $DOMAIN:"
+      printf '%b\n' "$others" >&2
+      if interactive; then
+        CERT=$(ask "Path of the certificate to use instead (fullchain), or press Enter to continue" "")
+        if [ -n "$CERT" ]; then
+          KEY=$(ask "Path of its private key" "")
+          rc=0; check_cert "$CERT" "$KEY" "$DOMAIN" || rc=$?
+          if [ $rc = 0 ] || { [ $rc = 2 ] && yesno "Use it anyway?" n; }; then set_cert_source "$CERT" "$KEY"; sync_certs; TLS_OK=1; return 0; fi
+        fi
+      fi
+    else
+      interactive && say "No existing certificate found on this machine."
+    fi
   fi
 
   # 3) a new certificate from Let's Encrypt

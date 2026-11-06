@@ -168,3 +168,48 @@ class Xui(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ScanCerts(unittest.TestCase):
+    """Finding an existing certificate for a domain, wherever 3x-ui / acme.sh / certbot left it."""
+
+    def make(self, d, cn, san, keyname="privkey.pem", certname="fullchain.pem"):
+        import subprocess
+        os.makedirs(d, exist_ok=True)
+        subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", os.path.join(d, keyname),
+                        "-out", os.path.join(d, certname), "-days", "30", "-subj", "/CN=" + cn,
+                        "-addext", "subjectAltName=" + san], check=True, capture_output=True)
+        return os.path.join(d, certname), os.path.join(d, keyname)
+
+    def test_scan(self):
+        from magdsubforge import xui
+        with tempfile.TemporaryDirectory() as t:
+            ac = self.make(os.path.join(t, "acme", "sub.example.com_ecc"), "sub.example.com", "DNS:sub.example.com",
+                           keyname="sub.example.com.key", certname="fullchain.cer")
+            other = self.make(os.path.join(t, "cert", "other.org"), "other.org", "DNS:other.org")
+            wild = self.make(os.path.join(t, "le", "example.net"), "example.net", "DNS:example.net,DNS:*.example.net")
+            found = xui.scan_certs("sub.example.com", dirs=[os.path.join(t, "acme"), os.path.join(t, "cert"), os.path.join(t, "le")])
+            self.assertEqual(len(found), 3)
+            self.assertEqual(found[0]["cert"], ac[0])                 # the matching one is listed first
+            self.assertTrue(found[0]["covers"] and found[0]["key"] == ac[1])
+            self.assertEqual([c["covers"] for c in found], [True, False, False])
+            by = {c["cert"]: c for c in found}
+            self.assertFalse(by[other[0]]["covers"])
+            self.assertTrue(xui.scan_certs("a.example.net", dirs=[os.path.join(t, "le")])[0]["covers"])   # wildcard
+            self.assertFalse(xui.scan_certs("a.b.example.net", dirs=[os.path.join(t, "le")])[0]["covers"])
+
+    def test_scan_cli_and_missing_key(self):
+        import io
+        from contextlib import redirect_stdout
+        from magdsubforge import xui
+        with tempfile.TemporaryDirectory() as t:
+            c, k = self.make(os.path.join(t, "x"), "a.example.com", "DNS:a.example.com")
+            os.unlink(k)
+            with mock.patch.dict(os.environ, {"MAGD_CERT_DIRS": t, "XUI_DB_FOLDER": t}):
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    xui.main(["--scan", "a.example.com"])
+            cols = buf.getvalue().strip().split("\t")
+            self.assertEqual(cols[0], c)
+            self.assertEqual(cols[1], "")                                # no key found
+            self.assertEqual(cols[2], "yes")

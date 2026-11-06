@@ -4,10 +4,13 @@ It only READS 3x-ui's settings database (opened read-only) to suggest values: th
 uses, and its JSON-subscription address. The setting names below come from memory of 3x-ui and are NOT verified
 against every version; anything missing is simply reported as absent and the installer asks the user instead.
 """
+import datetime
 import glob
 import json
 import os
+import re
 import sqlite3
+import subprocess
 
 DB_CANDIDATES = ("/etc/x-ui/x-ui.db",)
 ACME_GLOB = "/root/cert/*/fullchain.pem"       # where the `x-ui` menu's certificate option usually puts them
@@ -94,11 +97,111 @@ def detect(db_path=None):
     return res
 
 
+# ---------------------------------------------------------------- scanning for certificates by domain
+SCAN_DIRS = ("/root/cert", "/root/.acme.sh", "/root/.cert", "/etc/letsencrypt/live", "/etc/x-ui", "/usr/local/x-ui",
+             "/etc/ssl", "/etc/pki/tls", "/opt/cert", "/etc/nginx/ssl", "/etc/caddy")
+CERT_EXT = (".pem", ".crt", ".cer", ".cert")
+
+
+def _openssl(args):
+    try:
+        r = subprocess.run(["openssl"] + args, capture_output=True, text=True, timeout=15)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return r.stdout if r.returncode == 0 else None
+
+
+def _head(path):
+    try:
+        with open(path, "rb") as f:
+            return f.read(4096).decode("latin-1")
+    except OSError:
+        return ""
+
+
+def cert_info(path):
+    """{"names", "days", "pub"} of the first certificate in a file, or None."""
+    text = _openssl(["x509", "-in", path, "-noout", "-text", "-enddate"])
+    if not text:
+        return None
+    names = [n.lower() for n in re.findall(r"DNS:([^,\s]+)", text)]
+    cn = re.search(r"Subject:.*?CN\s*=\s*([^,\n/]+)", text)
+    if cn and cn.group(1).strip().lower() not in names:
+        names.append(cn.group(1).strip().lower())
+    days = None
+    m = re.search(r"notAfter=(.+)", text)
+    if m:
+        try:
+            end = datetime.datetime.strptime(" ".join(m.group(1).split()), "%b %d %H:%M:%S %Y %Z")
+            days = (end - datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)).days
+        except ValueError:
+            pass
+    pub = _openssl(["x509", "-in", path, "-noout", "-pubkey"])
+    return {"names": names, "days": days, "pub": (pub or "").strip()}
+
+
+def covers(names, domain):
+    domain = domain.lower().rstrip(".")
+    for n in names:
+        if n == domain:
+            return True
+        if n.startswith("*.") and "." in domain and domain.split(".", 1)[1] == n[2:]:
+            return True
+    return False
+
+
+def scan_certs(domain, dirs=None, extra=()):
+    """Look through the usual places (and the paths 3x-ui itself points at) for certificates; pair each with the private
+    key that matches it. -> list of {"cert","key","names","days","covers"}, best candidates first."""
+    dirs = dirs if dirs is not None else [d for d in (os.environ.get("MAGD_CERT_DIRS", "").split(":") if os.environ.get("MAGD_CERT_DIRS") else SCAN_DIRS) if d]
+    files = []
+    for d in dirs:
+        for root, subdirs, names in os.walk(d, followlinks=False):
+            if root[len(d):].count(os.sep) >= 3:
+                subdirs[:] = []
+            for n in names:
+                if n.lower().endswith(CERT_EXT + (".key",)):
+                    files.append(os.path.join(root, n))
+            if len(files) > 400:
+                break
+    for c, k in extra:
+        files += [f for f in (c, k) if f and os.path.isfile(f)]
+    certs, keys = [], {}
+    for f in dict.fromkeys(files):
+        head = _head(f)
+        if "BEGIN CERTIFICATE" in head:
+            certs.append(f)
+        elif "PRIVATE KEY" in head:
+            pub = _openssl(["pkey", "-in", f, "-pubout"])
+            if pub:
+                keys.setdefault(pub.strip(), []).append(f)
+    out, seen = [], set()
+    for f in certs:
+        info = cert_info(f)
+        if not info or not info["names"]:
+            continue
+        cands = keys.get(info["pub"], [])
+        key = next((k for k in cands if os.path.dirname(k) == os.path.dirname(f)), cands[0] if cands else "")
+        ident = (tuple(info["names"]), info["pub"], info["days"])
+        if ident in seen:
+            continue
+        seen.add(ident)
+        out.append({"cert": f, "key": key, "names": info["names"], "days": info["days"],
+                    "covers": covers(info["names"], domain) if domain else False})
+    rank = lambda c: (not (c["covers"] and c["key"] and (c["days"] or 0) >= 1), not c["key"], -(c["days"] or 0))
+    return sorted(out, key=rank)
+
+
 def main(argv):
     """python -m magdsubforge detect-xui [--db PATH] [--certs | --suggest]"""
     db = argv[argv.index("--db") + 1] if "--db" in argv else None
     res = detect(db)
-    if "--certs" in argv:          # tab-separated: label, certificate path, key path
+    if "--scan" in argv:           # tab-separated: certificate, key, covers (yes/no), days left, names
+        res_found = [(c["cert"], c["key"]) for c in res["certs"]]
+        for c in scan_certs(argv[argv.index("--scan") + 1], extra=res_found):
+            print("%s\t%s\t%s\t%s\t%s" % (c["cert"], c["key"], "yes" if c["covers"] else "no",
+                                          "" if c["days"] is None else c["days"], ",".join(c["names"])))
+    elif "--certs" in argv:          # tab-separated: label, certificate path, key path
         for c in res["certs"]:
             print("%s\t%s\t%s" % (c["label"], c["cert"], c["key"]))
     elif "--suggest" in argv:      # tab-separated: url, verify_tls
