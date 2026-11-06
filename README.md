@@ -4,7 +4,7 @@
 
 A small Flask service that sits between your **3x-ui** panel and your users' VPN apps. It fetches the panel's JSON
 subscription and rewrites it **by rules you define**: drop configs, reorder them, merge many configs into
-load-balanced ones (Xray `leastLoad`, `leastPing`, `random`, ...), and patch any JSON you like.
+load-balanced ones (Xray `leastLoad`, `leastPing`, `random`, ...), chain your own outbound (WARP, ...) through an exit, and patch any JSON you like.
 
 It knows no naming scheme and no provider. You decide what each config is, what is removed and what is combined.
 With no rules it returns the panel's subscription unchanged.
@@ -98,6 +98,7 @@ for all options and `examples/` for ready examples:
 |---|---|
 | remove or reorder configs | `rules` |
 | merge configs into one balancer (per country, per name prefix, ...) | `groups` |
+| put your own outbound (WARP, WireGuard, ...) in front of an exit config | `chains` + `accounts` |
 | change anything else (DNS, routing, mux, fragment, ...) | `patches` |
 | change address, port, URL path, timeouts | `server`, `panel` |
 
@@ -110,7 +111,7 @@ for all options and `examples/` for ready examples:
 
 ## Not included (yet)
 
-WARP integration. Planned.
+Automatic per-user account registration (for example WARP). Chains and a shared or per-user accounts file are supported; creating accounts automatically is not, yet.
 
 ## Similar projects (not affiliated)
 

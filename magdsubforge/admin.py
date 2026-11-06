@@ -107,6 +107,14 @@ def _write_atomic(path, data):
         raise
 
 
+def _accounts_for(app, clean):
+    """Account values for the preview: the saved ones, with the candidate's inline `accounts.default` on top."""
+    data = app.accounts.get()
+    default = dict(data["default"])
+    default.update(clean["accounts"]["default"])
+    return {"default": default, "users": data["users"]}
+
+
 def register(app, store):
     base = store.get()["admin"]["path"].rstrip("/") or "/admin"
     lockout = Lockout()
@@ -228,7 +236,8 @@ def register(app, store):
         errors, warnings = split_problems(problems)
         sample = data.get("configs")
         sample = [c for c in sample if isinstance(c, dict)] if isinstance(sample, list) else []
-        out, report = process(sample, clean)
+        subid = data.get("subid") if isinstance(data.get("subid"), str) else None
+        out, report = process(sample, clean, subid=subid, accounts=_accounts_for(app, clean))
         return reply({"errors": errors, "warnings": warnings, "report": report, "output": out})
 
     @guarded

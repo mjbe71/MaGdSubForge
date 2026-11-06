@@ -34,6 +34,10 @@
       cfgTable: "What happens to each config", outputs: "Result", errors: "Problems", warnings: "Notes", inOut: "in output",
       members: "members", showJson: "click to show JSON", wrongPw: "Wrong password", fetching: "Fetching…", hint_split: "Empty regex = one balancer for all",
       newItem: "new", confirmDel: "Delete this item?",
+      chains: "Chains", chainsHint: "Build a config whose own outbound (yours, e.g. WARP) is dialed through an exit config from the panel. Use {account.x}, {exit.address}, {split}, {n} inside the entry.",
+      exitWhen: "Exit configs (conditions)", entry: "Entry outbound (JSON)", entryHint: "Placeholders: {account.key} from the accounts source, {exit.address} (any field), {split}, {n}.",
+      throughExit: "Dial the entry through the exit config", removeExit: "Remove the exit config from the output", hint_chain_split: "Empty regex = one chain from the first match",
+      accounts: "Accounts (values for {account.*})", accountFile: "Accounts file", accountHint: "JSON file next to config.json; keep it private.", accountDefault: "Shared account (JSON, optional; the file wins)",
     },
     fa: {
       title: "مدیریت MaGdSubForge", password: "رمز عبور", login: "ورود", logout: "خروج", save: "ذخیره", saved: "ذخیره شد. تغییرات از درخواست بعدی اعمال می‌شود.",
@@ -62,6 +66,10 @@
       cfgTable: "سرنوشت هر کانفیگ", outputs: "نتیجه", errors: "مشکلات", warnings: "توجه", inOut: "در خروجی",
       members: "عضو", showJson: "برای دیدن JSON کلیک کنید", wrongPw: "رمز اشتباه است", fetching: "در حال گرفتن…", hint_split: "regex خالی = یک بالانسر برای همه",
       newItem: "جدید", confirmDel: "این مورد حذف شود؟",
+      chains: "زنجیره‌ها", chainsHint: "کانفیگی بسازید که outbound خودتان (مثلاً WARP) از داخل یک کانفیگ خروجی پنل عبور می‌کند. داخل entry می‌توانید از {account.x}، {exit.address}، {split} و {n} استفاده کنید.",
+      exitWhen: "کانفیگ‌های خروجی (شرط‌ها)", entry: "outbound ورودی (JSON)", entryHint: "جاگذارها: {account.key} از منبع حساب‌ها، {exit.address} (هر فیلد)، {split} و {n}.",
+      throughExit: "ورودی از داخل کانفیگ خروجی عبور کند", removeExit: "کانفیگ خروجی از نتیجه حذف شود", hint_chain_split: "regex خالی = یک زنجیره از اولین مطابق",
+      accounts: "حساب‌ها (مقدار {account.*})", accountFile: "فایل حساب‌ها", accountHint: "فایل JSON کنار config.json؛ محرمانه نگه دارید.", accountDefault: "حساب مشترک (JSON، اختیاری؛ فایل اولویت دارد)",
     },
   };
   let lang = (navigator.language || "").startsWith("fa") ? "fa" : "en";
@@ -101,6 +109,7 @@
   let tab = "rules";
   let previewTimer = null;
   let lastPreview = null;
+  let lastSubid = "";
   const root = document.getElementById("app");
 
   async function api(path, body) {
@@ -188,23 +197,23 @@
     for (const f of Object.keys(w)) { const ops = Object.keys(w[f]); if (ops.length === 1 && ops[0] === "equals") w[f] = w[f].equals; }
     return w;
   }
-  function whenEditor(obj) {
+  function whenEditor(obj, key = "when", label = "when") {
     const box = h("div", { class: "when" });
-    let mode = isSimple(obj.when) ? "rows" : "json";
+    let mode = isSimple(obj[key]) ? "rows" : "json";
     function draw() {
       box.replaceChildren();
-      const head = h("div", { class: "row" }, h("h4", {}, t("when")));
+      const head = h("div", { class: "row" }, h("h4", {}, t(label)));
       const toggle = h("button", { type: "button", onclick: () => {
-        if (mode === "rows") { mode = "json"; draw(); } else if (isSimple(obj.when)) { mode = "rows"; draw(); } else alert(t("notSimple"));
+        if (mode === "rows") { mode = "json"; draw(); } else if (isSimple(obj[key])) { mode = "rows"; draw(); } else alert(t("notSimple"));
       } }, mode === "rows" ? t("jsonMode") : t("rowsMode"));
       head.append(toggle);
       box.append(head);
       if (mode === "json") {
-        box.append(bindJSON(obj, "when", 4));
+        box.append(bindJSON(obj, key, 4));
         return;
       }
-      const rows = toRows(obj.when);
-      const sync = () => { const w = fromRows(rows); if (Object.keys(w).length) obj.when = w; else delete obj.when; changed(); };
+      const rows = toRows(obj[key]);
+      const sync = () => { const w = fromRows(rows); if (Object.keys(w).length) obj[key] = w; else delete obj[key]; changed(); };
       const list = h("div");
       const render = () => {
         list.replaceChildren();
@@ -280,6 +289,22 @@
       field(t("memberCost"), bindJSON(g, "member_cost"), null, true));
   };
 
+  const chainBody = (c) => {
+    c.split_by = c.split_by && typeof c.split_by === "object" ? c.split_by : undefined;
+    const sb = c.split_by || {};
+    const upd = () => { if (sb.regex) c.split_by = { field: sb.field || "remark", regex: sb.regex }; else delete c.split_by; changed(); };
+    return h("div", {}, whenEditor(c, "exit_when", "exitWhen"),
+      h("div", { class: "grid" },
+        field(t("splitField"), h("input", { type: "text", list: "dl-fields", value: sb.field ?? "remark", oninput: (e) => { sb.field = e.target.value; upd(); } })),
+        field(t("splitRegex"), h("input", { type: "text", value: sb.regex ?? "", oninput: (e) => { sb.regex = e.target.value; upd(); } }), t("hint_chain_split")),
+        field(t("name"), bindText(c, "name")),
+        field(t("position"), bindSelect(c, "position", [["", t("default")], ["top", t("top")], ["bottom", t("bottom")]]))),
+      h("div", { class: "row" },
+        h("label", { class: "check" }, bindBool(c, "through_exit", true), t("throughExit")),
+        h("label", { class: "check" }, bindBool(c, "remove_exit_from_output", false), t("removeExit"))),
+      field(t("entry"), bindJSON(c, "entry", 10), t("entryHint"), true));
+  };
+
   const patchBody = (p) => h("div", {}, whenEditor(p),
     h("div", { class: "grid" },
       field(t("stage"), bindSelect(p, "stage", [["", t("source")], ["output", t("output")]])),
@@ -291,6 +316,7 @@
   function settingsEditor() {
     const s = (cfg.server = cfg.server || {});
     const p = (cfg.panel = cfg.panel || {});
+    const a = (cfg.accounts = cfg.accounts || {});
     return h("div", {},
       h("h3", {}, t("server")),
       h("div", { class: "grid" },
@@ -309,6 +335,9 @@
         h("label", { class: "check" }, bindBool(p, "verify_tls", true), t("verifyTls"))),
       field(t("headers"), bindJSON(p, "headers"), null, true),
       field(t("passHeaders"), bindJSON(p, "pass_headers"), null, true),
+      h("h3", {}, t("accounts")),
+      h("div", { class: "grid" }, field(t("accountFile"), bindText(a, "file", { placeholder: "accounts.json" }), t("accountHint"), true)),
+      field(t("accountDefault"), bindJSON(a, "default"), null, true),
       h("p", { class: "hint" }, t("adminNote")));
   }
 
@@ -336,10 +365,11 @@
   }
 
   function drawEditor() {
-    const tabs = [["rules", t("rules")], ["groups", t("groups")], ["patches", t("patches")], ["settings", t("settings")], ["raw", t("raw")]];
+    const tabs = [["rules", t("rules")], ["groups", t("groups")], ["chains", t("chains")], ["patches", t("patches")], ["settings", t("settings")], ["raw", t("raw")]];
     let body;
     if (tab === "rules") body = listEditor("rules", "rulesHint", (items) => ({ id: nextId("rule", items), when: {}, do: "drop" }), ruleBody);
     else if (tab === "groups") body = listEditor("groups", "groupsHint", (items) => ({ id: nextId("group", items), type: "leastLoad", when: {} }), groupBody);
+    else if (tab === "chains") body = listEditor("chains", "chainsHint", (items) => ({ id: nextId("chain", items), exit_when: {}, entry: {} }), chainBody);
     else if (tab === "patches") body = listEditor("patches", "patchesHint", (items) => ({ id: nextId("patch", items), merge: {} }), patchBody);
     else if (tab === "settings") body = settingsEditor();
     else body = rawEditor();
@@ -354,7 +384,7 @@
     previewTimer = setTimeout(runPreview, 450);
   }
   async function runPreview() {
-    const r = await api("preview", { config: cfg, configs: sample || [] });
+    const r = await api("preview", { config: cfg, configs: sample || [], subid: lastSubid });
     if (!r.ok) return;
     lastPreview = r.data;
     drawPreviewResult();
@@ -376,7 +406,7 @@
       h("tbody", {}, d.report.configs.map((c) => h("tr", { class: c.action === "drop" ? "drop" : "" },
         h("td", {}, c.index), h("td", {}, c.remark), h("td", { class: "dim" }, c.fields.network || ""),
         h("td", {}, c.action, c.rule ? h("span", { class: "chip" }, c.rule) : null),
-        h("td", {}, c.groups.map((g) => h("span", { class: "chip" }, g))))))));
+        h("td", {}, c.groups.concat(c.chains || []).map((g) => h("span", { class: "chip" }, g))))))));
     const pre = h("pre", { hidden: true });
     resultEl.append(h("h3", {}, t("outputs") + " (" + d.output.length + ")"),
       h("div", {}, d.output.map((o, i) => h("div", { class: "out-item", title: t("showJson"), onclick: () => {
@@ -392,7 +422,8 @@
       h("h3", {}, t("preview")),
       h("div", { class: "row" }, subid, h("button", { type: "button", onclick: async () => {
         note.textContent = t("fetching");
-        const r = await api("sample", { subid: subid.value.trim(), config: cfg });
+        lastSubid = subid.value.trim();
+        const r = await api("sample", { subid: lastSubid, config: cfg });
         if (r.ok) { sample = r.data.configs; note.textContent = ""; drawSampleInfo(); runPreview(); } else note.textContent = r.data.error || "error";
       } }, t("fetch")), note),
       paste,

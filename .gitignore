@@ -8,3 +8,5 @@ venv/
 config.json
 data/
 *.lock
+accounts*.json
+!accounts.example.json

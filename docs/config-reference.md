@@ -14,7 +14,7 @@ Nothing below is assumed by the program: it never looks for special words in nam
 ## How a subscription is processed
 
 ```
-panel response ──► patches (stage "source") ──► rules ──► groups ──► patches (stage "output") ──► client
+panel response ──► patches (stage "source") ──► rules ──► groups ──► chains ──► patches (stage "output") ──► client
 ```
 
 ## `server`
@@ -128,6 +128,58 @@ A list, evaluated in order. Each group collects the configs matching `when` (dro
 Notes: routing rules that pointed at the first member's outbound are re-pointed to the balancer, and a final
 "all traffic → balancer" rule is added. The old `observatory`/`burstObservatory` of the template are removed
 because they referred to the old tags.
+
+## `chains`: put your own outbound in front of an exit
+
+A chain builds, from an **exit config** of the panel, a new config whose traffic goes through **your own `entry`
+outbound** (for example a WARP/masque or WireGuard outbound), which in turn is dialed *through* the exit
+(`sockopt.dialerProxy`). The program knows nothing about what the entry is: you paste the outbound JSON.
+
+```json
+{
+  "id": "second-hop",
+  "exit_when": { "remark": { "startswith": "fast-" } },
+  "split_by": { "field": "remark", "regex": "^fast-([^-]+)" },
+  "name": "{split} + second hop",
+  "entry": {
+    "protocol": "masque",
+    "settings": { "address": "gate.example.com", "port": 443 },
+    "streamSettings": { "masqueSettings": { "warp": { "privateKey": "{account.privateKey}", "address": "{account.address}" } } }
+  }
+}
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `id`, `enabled` | | As for rules. |
+| `exit_when` | everything | Which configs may serve as the exit. |
+| `split_by` | none | One chain per bucket (the bucket's **first** config is the exit). Without it, one chain from the first matching config. For one chain per config use `{"field": "remark", "regex": "^(.*)$"}`. |
+| `name` | `{split}` with `split_by`, else the id | Remark of the result (`{split}`, `{n}`, `{group}`). |
+| `entry` | **required** | The outbound to dial through the exit. Placeholders are filled in (below). |
+| `through_exit` | `true` | `false` = no exit: the config only borrows DNS/inbounds/routing from the first match and its own outbound is replaced by `entry`. |
+| `remove_exit_from_output` | `false` | Remove the exit config from the result. |
+| `position` | where the exit was | `"top"` or `"bottom"`. |
+
+**Placeholders** inside `entry` (strings only): `{account.<key>}` values from [`accounts`](#accounts), `{exit.<field>}`
+any field of the exit config (`address`, `port`, `remark`, ...), `{split}`, `{n}`. A string that is *only* a placeholder
+keeps the value's type (so lists such as an address list work). If a value is missing, that chain is skipped and the
+problem is reported (preview, stderr); everything else still works. The `entry` outbound gets the tag
+`<id>-<bucket>-entry` and the exit `<id>-<bucket>-exit`; routing rules that pointed at the exit's old tag, and a final
+"all traffic" rule, now point at the entry.
+
+## `accounts`
+
+Where `{account.*}` values come from. Optional.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `file` | `""` | JSON file (relative paths are relative to `config.json`), re-read when it changes. |
+| `default` | `{}` | Values written inline; the file wins on conflicts. |
+
+The file is either one flat object (one account for everybody) or
+`{"default": {...}, "users": {"<subscription id>": {...}}}`: a user's own entry is merged over `default`, so you can give
+individual users personal values. Treat the file as a secret (`accounts*.json` is in `.gitignore`).
+See `examples/accounts.example.json` and `examples/chain.json`.
 
 ## `patches`: change anything
 

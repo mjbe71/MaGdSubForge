@@ -3,7 +3,7 @@
     python -m magdsubforge serve                       development server (use gunicorn in production)
     python -m magdsubforge check [config.json]         validate a configuration
     python -m magdsubforge hash-password               make a value for admin.password_hash
-    python -m magdsubforge preview panel.json [config.json] [--full]
+    python -m magdsubforge preview panel.json [config.json] [--subid ID] [--full]
                                                       run the rules on a saved panel response, no network
 """
 import argparse
@@ -12,6 +12,7 @@ import logging
 import os
 import sys
 
+from .accounts import AccountStore
 from .config import ConfigStore, split_problems
 from .engine import process
 from .server import create_app
@@ -28,6 +29,7 @@ def main(argv=None):
     p = sub.add_parser("preview")
     p.add_argument("panel_json")
     p.add_argument("config", nargs="?")
+    p.add_argument("--subid", help="use this subscription id's personal account values")
     p.add_argument("--full", action="store_true", help="print the resulting configs too")
     a = ap.parse_args(argv)
 
@@ -54,7 +56,8 @@ def main(argv=None):
 
     with open(a.panel_json, encoding="utf-8") as f:
         data = json.load(f)
-    out, report = process(data if isinstance(data, list) else [data], store.get())
+    out, report = process(data if isinstance(data, list) else [data], store.get(), subid=a.subid,
+                         accounts=AccountStore(store).get())
     for c in report["configs"]:
         where = ("-> " + ", ".join(c["groups"])) if c["groups"] else ""
         print("%2d  %-9s %-28s %s %s" % (c["index"], c["action"] + ("*" if c["rule"] else ""),

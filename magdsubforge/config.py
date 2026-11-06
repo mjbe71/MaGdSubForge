@@ -35,8 +35,13 @@ DEFAULTS = {
         "session_hours": 12,
         "max_failed_logins": 5, "lockout_seconds": 300,
     },
+    "accounts": {
+        "file": "",                              # JSON file with account values for {account.*} placeholders
+        "default": {},                           # ...or put a shared account right here
+    },
     "rules": [],
     "groups": [],
+    "chains": [],
     "patches": [],
 }
 
@@ -93,12 +98,18 @@ SECTION_CHECKS = {
         "max_failed_logins": (lambda v: _is_int(v) and v >= 1, "an integer >= 1"),
         "lockout_seconds": (lambda v: _is_num(v) and v > 0, "a number > 0"),
     },
+    "accounts": {
+        "file": (lambda v: isinstance(v, str), "a file path (string)"),
+        "default": (lambda v: isinstance(v, dict), "an object"),
+    },
 }
 
 ITEM_KEYS = {
     "rules": {"id", "enabled", "when", "do"},
     "groups": {"id", "enabled", "when", "split_by", "name", "type", "params", "probe", "probe_kind",
                "member_cost", "min_members", "remove_members_from_output", "position"},
+    "chains": {"id", "enabled", "exit_when", "split_by", "name", "entry", "through_exit", "remove_exit_from_output",
+               "position"},
     "patches": {"id", "enabled", "stage", "target", "when", "merge", "routing_prepend", "routing_append"},
 }
 
@@ -129,6 +140,8 @@ def _check_item(kind, item, where):
     if "enabled" in item and not isinstance(item["enabled"], bool):
         p.append("%s.enabled: must be true or false" % where)
     p += check_when(item.get("when"), where + ".when")
+    if kind == "chains":
+        p += check_when(item.get("exit_when"), where + ".exit_when")
     if kind == "rules":
         if item.get("do") not in RULE_ACTIONS:
             p.append("%s.do: must be one of %s" % (where, ", ".join(RULE_ACTIONS)))
@@ -162,6 +175,19 @@ def _check_item(kind, item, where):
                         p.append('%s.member_cost[%d]: needs {"when": {...}, "value": number}' % (where, i))
                     else:
                         p += check_when(e.get("when"), "%s.member_cost[%d].when" % (where, i))
+    elif kind == "chains":
+        if not isinstance(item.get("entry"), dict) or not item.get("entry"):
+            p.append("%s.entry: required; the outbound (JSON object) to dial through the exit" % where)
+        sb = item.get("split_by")
+        if sb is not None and not (isinstance(sb, dict) and isinstance(sb.get("field"), str) and _regex_ok(sb.get("regex"))):
+            p.append('%s.split_by: must be {"field": "...", "regex": "..."} with a valid regex' % where)
+        if "name" in item and not isinstance(item["name"], str):
+            p.append("%s.name: must be a string" % where)
+        for k in ("through_exit", "remove_exit_from_output"):
+            if k in item and not isinstance(item[k], bool):
+                p.append("%s.%s: must be true or false" % (where, k))
+        if item.get("position") not in (None, "top", "bottom"):
+            p.append('%s.position: must be "top" or "bottom"' % where)
     elif kind == "patches":
         if item.get("stage", "source") not in ("source", "output"):
             p.append('%s.stage: must be "source" or "output"' % where)
@@ -216,10 +242,11 @@ def normalize(raw):
     _section("server", raw.get("server"), conf, problems)
     _section("panel", raw.get("panel"), conf, problems)
     _section("admin", raw.get("admin"), conf, problems)
+    _section("accounts", raw.get("accounts"), conf, problems)
     if conf["admin"]["password"] and not conf["admin"]["password_hash"]:
         problems.append("admin.password: stored in plain text; consider admin.password_hash "
                         "(python -m magdsubforge hash-password)")
-    for kind in ("rules", "groups", "patches"):
+    for kind in ("rules", "groups", "chains", "patches"):
         _items(kind, raw.get(kind), conf, problems)
     for g in conf["groups"]:
         if g["type"] in ("leastLoad", "leastPing") and not g.get("probe"):
@@ -273,5 +300,5 @@ class ConfigStore:
             for p in problems:
                 _log(p)
             self._conf, self.problems = conf, problems
-            _log("loaded %s (%d rule(s), %d group(s), %d patch(es))" % (
-                self.path, len(conf["rules"]), len(conf["groups"]), len(conf["patches"])))
+            _log("loaded %s (%d rule(s), %d group(s), %d chain(s), %d patch(es))" % (
+                self.path, len(conf["rules"]), len(conf["groups"]), len(conf["chains"]), len(conf["patches"])))

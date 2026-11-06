@@ -6,6 +6,7 @@ import sys
 from flask import Flask, Response, redirect, request
 
 from . import admin
+from .accounts import AccountStore
 from .config import ConfigStore
 from .engine import process
 from .panel import PanelError, fetch_panel
@@ -13,6 +14,7 @@ from .panel import PanelError, fetch_panel
 
 def create_app(store=None):
     store = store or ConfigStore()
+    accounts = AccountStore(store)
     app = Flask(__name__)
     app.config["JSON_AS_ASCII"] = False
     app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
@@ -39,7 +41,7 @@ def create_app(store=None):
         except PanelError as e:
             return text(e.message, e.status)
         try:
-            out, _ = process(configs, conf)
+            out, _ = process(configs, conf, subid=subid, accounts=accounts.get())
         except Exception as e:   # better to hand out the panel's own configs than nothing
             print("[server] processing failed (%s: %s); passing the panel's response through"
                   % (type(e).__name__, e), file=sys.stderr, flush=True)
@@ -54,4 +56,5 @@ def create_app(store=None):
     app.add_url_rule(route.rstrip("/") + "/<subid>", "sub", sub)
     admin.register(app, store)
     app.store = store
+    app.accounts = accounts
     return app

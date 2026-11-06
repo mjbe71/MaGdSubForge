@@ -1,6 +1,6 @@
-"""Applies the admin's rules, groups and patches to the configs the panel returned.
+"""Applies the admin's rules, groups, chains and patches to the configs the panel returned.
 
-Order of work:  patches(stage "source")  ->  rules  ->  groups  ->  patches(stage "output")
+Order of work:  patches(stage "source")  ->  rules  ->  groups  ->  chains  ->  patches(stage "output")
 
 Nothing here is specific to any naming scheme or provider. With an empty configuration the input comes
 back unchanged.
@@ -9,7 +9,7 @@ import copy
 import re
 import sys
 
-from .matching import NON_PROXY, fields_of, get_value, main_index, match
+from .matching import NON_PROXY, dig, fields_of, get_value, main_index, match
 
 SHOWN = ("protocol", "address", "port", "network", "security", "sni", "flag")
 
@@ -115,8 +115,93 @@ def build_group(group, key, members, work, index):
     return out, members
 
 
-def process(configs, conf):
-    """-> (output configs, report). `conf` is a normalized configuration (see config.normalize)."""
+_PLACEHOLDER = re.compile(r"\{(account|exit|split|n)(?:\.([A-Za-z0-9_.\-]+))?\}")
+
+
+def _lookup(m, values):
+    kind, path = m.group(1), m.group(2)
+    base = values.get(kind)
+    val = (dig(base, path) if isinstance(base, dict) else None) if path else base
+    if val is None or val == {}:
+        raise ValueError("no value for {%s%s}" % (kind, "." + path if path else ""))
+    return copy.deepcopy(val)
+
+
+def substitute(obj, values):
+    """Fill {account.x} {exit.field} {split} {n} placeholders. A string that is exactly one placeholder keeps the
+    value's type (so lists and numbers work); inside longer text it is inserted as text."""
+    if isinstance(obj, dict):
+        return {k: substitute(v, values) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [substitute(v, values) for v in obj]
+    if isinstance(obj, str):
+        whole = _PLACEHOLDER.fullmatch(obj)
+        if whole:
+            return _lookup(whole, values)
+        return _PLACEHOLDER.sub(lambda m: str(_lookup(m, values)), obj)
+    return obj
+
+
+def bucketize(cands, split_by, work):
+    """{bucket key: [states]}; without split_by everything is one bucket (key "")."""
+    buckets = {}
+    if split_by:
+        rx = re.compile(split_by["regex"])
+        for st in cands:
+            v = get_value(work[st["i"]], st["fields"], split_by["field"])
+            mo = rx.search(str(v)) if v is not None else None
+            if mo:
+                key = (mo.group(1) if mo.re.groups else mo.group(0)) or ""
+                buckets.setdefault(key, []).append(st)
+    elif cands:
+        buckets[""] = list(cands)
+    return buckets
+
+
+def build_chain(chain, key, sts, work, index, account):
+    """One output config: the admin's `entry` outbound, dialed through the first exit config's outbound."""
+    first = sts[0]
+    out = copy.deepcopy(work[first["i"]])
+    mi = main_index(out)
+    exit_ob = out["outbounds"][mi]
+    old_tag = exit_ob.get("tag")
+    gid = slug(chain["id"])
+    entry_tag, exit_tag = "%s-%d-entry" % (gid, index), "%s-%d-exit" % (gid, index)
+    values = {"account": account or {}, "exit": dict(first["fields"]), "split": key, "n": len(sts)}
+    entry = substitute(chain["entry"], values)
+    entry["tag"] = entry_tag
+    others = [o for i, o in enumerate(out["outbounds"]) if i != mi]
+    if chain.get("through_exit", True):
+        exit_ob["tag"] = exit_tag
+        stream = entry.get("streamSettings") if isinstance(entry.get("streamSettings"), dict) else {}
+        sock = stream.get("sockopt") if isinstance(stream.get("sockopt"), dict) else {}
+        sock["dialerProxy"] = exit_tag
+        stream["sockopt"] = sock
+        entry["streamSettings"] = stream
+        out["outbounds"] = [entry, exit_ob] + others
+    else:
+        out["outbounds"] = [entry] + others
+    routing = out.get("routing") if isinstance(out.get("routing"), dict) else {}
+    rules = routing.get("rules") if isinstance(routing.get("rules"), list) else []
+    for r in rules:
+        if isinstance(r, dict) and old_tag and r.get("outboundTag") == old_tag:
+            r["outboundTag"] = entry_tag
+    rules.append({"type": "field", "network": "tcp,udp", "outboundTag": entry_tag})
+    routing["rules"] = rules
+    out["routing"] = routing
+    out.pop("observatory", None)
+    out.pop("burstObservatory", None)
+    default_name = "{split}" if chain.get("split_by") else chain["id"]
+    out["remarks"] = render(chain.get("name") or default_name, split=key, n=len(sts), group=chain["id"])
+    return out
+
+
+def process(configs, conf, subid=None, accounts=None):
+    """-> (output configs, report). `conf` is a normalized configuration (see config.normalize).
+    `accounts` is {"default": {...}, "users": {subid: {...}}} (see accounts.py); `subid` picks the user's entry."""
+    accounts = accounts or {}
+    account = dict(accounts.get("default") or {})
+    account.update((accounts.get("users") or {}).get(subid) or {})
     work = [copy.deepcopy(c) for c in configs if isinstance(c, dict)]
     report = {"configs": [], "outputs": [], "errors": []}
 
@@ -141,7 +226,7 @@ def process(configs, conf):
     state = []
     for i, c in enumerate(work):
         f = fields_of(c)
-        st = {"i": i, "fields": f, "rule": None, "action": None, "groups": []}
+        st = {"i": i, "fields": f, "rule": None, "action": None, "groups": [], "chains": []}
         for r in conf["rules"]:
             if r.get("enabled", True) and guarded("rule %s" % r.get("id"), lambda: match(r.get("when"), c, f)):
                 st["rule"], st["action"] = r.get("id"), r["do"]
@@ -157,18 +242,7 @@ def process(configs, conf):
 
         def run_group(g=g):
             cands = [st for st in alive if match(g.get("when"), work[st["i"]], st["fields"])]
-            buckets = {}
-            sb = g.get("split_by")
-            if sb:
-                rx = re.compile(sb["regex"])
-                for st in cands:
-                    v = get_value(work[st["i"]], st["fields"], sb["field"])
-                    mo = rx.search(str(v)) if v is not None else None
-                    if mo:
-                        key = (mo.group(1) if mo.re.groups else mo.group(0)) or ""
-                        buckets.setdefault(key, []).append(st)
-            elif cands:
-                buckets[""] = cands
+            buckets = bucketize(cands, g.get("split_by"), work)
             for bi, (key, sts) in enumerate(buckets.items()):
                 if len(sts) < g.get("min_members", 1):
                     continue
@@ -183,6 +257,25 @@ def process(configs, conf):
                 made.append((min(m["i"] for m in members), g.get("position"), cfg, g["id"], len(members)))
 
         guarded("group %s" % g.get("id"), run_group)
+
+    # chains
+    for ch in conf["chains"]:
+        if not ch.get("enabled", True):
+            continue
+
+        def run_chain(ch=ch):
+            cands = [st for st in alive if match(ch.get("exit_when"), work[st["i"]], st["fields"])
+                     and main_index(work[st["i"]]) is not None]
+            for bi, (key, sts) in enumerate(bucketize(cands, ch.get("split_by"), work).items()):
+                cfg = guarded("chain %s" % ch["id"], lambda key=key, sts=sts, bi=bi: build_chain(ch, key, sts, work, bi, account))
+                if cfg is None:
+                    continue
+                sts[0]["chains"].append(ch["id"])
+                if ch.get("remove_exit_from_output", False):
+                    removed.add(sts[0]["i"])
+                made.append((sts[0]["i"], ch.get("position"), cfg, ch["id"], 1))
+
+        guarded("chain %s" % ch.get("id"), run_chain)
 
     # assemble the output list
     entries = []
@@ -204,7 +297,7 @@ def process(configs, conf):
         report["configs"].append({
             "index": st["i"], "remark": st["fields"].get("remark"),
             "fields": {k: st["fields"].get(k) for k in SHOWN if st["fields"].get(k) is not None},
-            "rule": st["rule"], "action": action, "groups": st["groups"],
+            "rule": st["rule"], "action": action, "groups": st["groups"], "chains": st["chains"],
             "in_output": action != "drop" and st["i"] not in removed,
         })
     for first, pos, cfg, gid, n in made:
