@@ -2,6 +2,7 @@
 
     python -m magdsubforge serve                       development server (use gunicorn in production)
     python -m magdsubforge check [config.json]         validate a configuration
+    python -m magdsubforge hash-password               make a value for admin.password_hash
     python -m magdsubforge preview panel.json [config.json] [--full]
                                                       run the rules on a saved panel response, no network
 """
@@ -11,7 +12,7 @@ import logging
 import os
 import sys
 
-from .config import ConfigStore
+from .config import ConfigStore, split_problems
 from .engine import process
 from .server import create_app
 
@@ -23,16 +24,28 @@ def main(argv=None):
     s.add_argument("config", nargs="?")
     c = sub.add_parser("check")
     c.add_argument("config", nargs="?")
+    sub.add_parser("hash-password", help="make a value for admin.password_hash")
     p = sub.add_parser("preview")
     p.add_argument("panel_json")
     p.add_argument("config", nargs="?")
     p.add_argument("--full", action="store_true", help="print the resulting configs too")
     a = ap.parse_args(argv)
 
+    if a.cmd == "hash-password":
+        import getpass
+        from werkzeug.security import generate_password_hash
+        pw = getpass.getpass("Admin password: ")
+        if not pw or pw != getpass.getpass("Again: "):
+            print("Empty or different passwords; nothing done.", file=sys.stderr)
+            return 1
+        print(generate_password_hash(pw))
+        return 0
+
     store = ConfigStore(a.config)
     if a.cmd == "check":
-        print("OK" if not store.problems else "%d problem(s) listed above" % len(store.problems))
-        return 1 if store.problems else 0
+        errors = split_problems(store.problems)[0]
+        print("OK" if not errors else "%d problem(s) listed above" % len(errors))
+        return 1 if errors else 0
     if a.cmd == "serve":
         logging.getLogger("werkzeug").setLevel(logging.ERROR)   # the URL contains the secret id: no request log
         srv = store.get()["server"]

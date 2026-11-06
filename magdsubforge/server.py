@@ -3,17 +3,19 @@ import json
 import re
 import sys
 
-import requests
 from flask import Flask, Response, redirect, request
 
+from . import admin
 from .config import ConfigStore
 from .engine import process
+from .panel import PanelError, fetch_panel
 
 
 def create_app(store=None):
     store = store or ConfigStore()
     app = Flask(__name__)
     app.config["JSON_AS_ASCII"] = False
+    app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
     route = store.get()["server"]["route"]          # the route is fixed at startup (restart to change it)
 
     def text(msg, code):
@@ -32,24 +34,10 @@ def create_app(store=None):
             return text("panel.url is not set in config.json", 503)
         if panel["page_url"] and "text/html" in request.headers.get("Accept", ""):
             return redirect(panel["page_url"].rstrip("/") + "/" + subid, code=302)
-        base = panel["url"] if panel["url"].endswith("/") else panel["url"] + "/"
         try:
-            r = requests.get(base + subid, headers=panel["headers"], timeout=panel["timeout"],
-                             verify=panel["verify_tls"])
-        except requests.RequestException as e:   # never print the URL: it contains the secret id
-            print("[server] panel unreachable: %s" % type(e).__name__, file=sys.stderr, flush=True)
-            return text("panel unreachable", 502)
-        if r.status_code == 404:
-            return text("not found", 404)
-        if r.status_code != 200:
-            return text("panel returned %d" % r.status_code, 502)
-        try:
-            data = r.json()
-        except ValueError:
-            return text("panel did not return JSON", 502)
-        configs = data if isinstance(data, list) else [data] if isinstance(data, dict) else None
-        if configs is None:
-            return text("unexpected panel response", 502)
+            r, configs, data = fetch_panel(panel, subid)
+        except PanelError as e:
+            return text(e.message, e.status)
         try:
             out, _ = process(configs, conf)
         except Exception as e:   # better to hand out the panel's own configs than nothing
@@ -64,5 +52,6 @@ def create_app(store=None):
         return resp
 
     app.add_url_rule(route.rstrip("/") + "/<subid>", "sub", sub)
+    admin.register(app, store)
     app.store = store
     return app

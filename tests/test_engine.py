@@ -278,7 +278,7 @@ class Server(unittest.TestCase):
 
     def test_passthrough_and_headers(self):
         app = self.app_with({"panel": {"url": "https://panel.example.com/json"}})
-        with mock.patch("magdsubforge.server.requests.get",
+        with mock.patch("magdsubforge.panel.requests.get",
                         return_value=FakeResponse(PANEL, headers={"Profile-Title": "demo", "X-Other": "no"})) as get:
             r = app.test_client().get("/sub/abcd1234")
         self.assertEqual(r.status_code, 200)
@@ -291,7 +291,7 @@ class Server(unittest.TestCase):
         raw = dict(BALANCERS, server={"route": "/s/"})
         app = self.app_with(raw)
         c = app.test_client()
-        with mock.patch("magdsubforge.server.requests.get", return_value=FakeResponse(PANEL)):
+        with mock.patch("magdsubforge.panel.requests.get", return_value=FakeResponse(PANEL)):
             r = c.get("/s/abcd1234")
             self.assertEqual([x["remarks"] for x in json.loads(r.data)],
                              ["info", "berlin (balanced, 3)", "tokyo (balanced, 2)", "backup-oslo"])
@@ -302,7 +302,7 @@ class Server(unittest.TestCase):
 
     def test_single_object_stays_single(self):
         app = self.app_with({"panel": {"url": "https://p.example.com/json/"}})
-        with mock.patch("magdsubforge.server.requests.get", return_value=FakeResponse(PANEL[1])):
+        with mock.patch("magdsubforge.panel.requests.get", return_value=FakeResponse(PANEL[1])):
             r = app.test_client().get("/sub/abcd1234")
         self.assertEqual(json.loads(r.data), PANEL[1])
 
@@ -311,13 +311,13 @@ class Server(unittest.TestCase):
         self.assertEqual(c.get("/sub/abcd1234").status_code, 503)
         c = self.app_with({"panel": {"url": "https://p.example.com/json/"}}).test_client()
         import requests
-        with mock.patch("magdsubforge.server.requests.get", side_effect=requests.ConnectionError("x")):
+        with mock.patch("magdsubforge.panel.requests.get", side_effect=requests.ConnectionError("x")):
             self.assertEqual(c.get("/sub/abcd1234").status_code, 502)
-        with mock.patch("magdsubforge.server.requests.get", return_value=FakeResponse(None, status=404)):
+        with mock.patch("magdsubforge.panel.requests.get", return_value=FakeResponse(None, status=404)):
             self.assertEqual(c.get("/sub/abcd1234").status_code, 404)
-        with mock.patch("magdsubforge.server.requests.get", return_value=FakeResponse(None, status=500)):
+        with mock.patch("magdsubforge.panel.requests.get", return_value=FakeResponse(None, status=500)):
             self.assertEqual(c.get("/sub/abcd1234").status_code, 502)
-        with mock.patch("magdsubforge.server.requests.get", return_value=FakeResponse(ValueError("no"))):
+        with mock.patch("magdsubforge.panel.requests.get", return_value=FakeResponse(ValueError("no"))):
             self.assertEqual(c.get("/sub/abcd1234").status_code, 502)
 
     def test_browser_redirect(self):
@@ -327,7 +327,7 @@ class Server(unittest.TestCase):
 
     def test_engine_failure_falls_back_to_panel_response(self):
         c = self.app_with({"panel": {"url": "https://p.example.com/json/"}}).test_client()
-        with mock.patch("magdsubforge.server.requests.get", return_value=FakeResponse(PANEL)), \
+        with mock.patch("magdsubforge.panel.requests.get", return_value=FakeResponse(PANEL)), \
                 mock.patch("magdsubforge.server.process", side_effect=RuntimeError("boom")):
             r = c.get("/sub/abcd1234")
         self.assertEqual(json.loads(r.data), PANEL)

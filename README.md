@@ -60,9 +60,34 @@ server {
     server_name sub.example.com;
     # ssl_certificate ...;
     access_log off;
-    location / { proxy_pass http://127.0.0.1:8080; proxy_set_header Host $host; }
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
 ```
+
+## Web admin panel
+
+Everything below can be edited in a browser instead of by hand. The panel is **off by default**; turn it on by
+setting a password in `config.json`:
+
+```bash
+python -m magdsubforge hash-password        # asks for a password, prints a hash
+```
+
+```json
+{ "admin": { "password_hash": "<paste the hash here>" } }
+```
+
+Then open `http://127.0.0.1:8080/admin` (path: `admin.path`) and log in. You get forms for rules, groups, patches and
+the server/panel settings (plus a raw JSON editor), and a **live preview**: enter a subscription id, fetch the panel's
+real response, and watch what every config becomes as you edit. **Save** writes `config.json`; changes apply at once.
+English and Persian (right-to-left) are built in.
+
+Use it only over HTTPS (or through an SSH tunnel): the password travels in the login request. Login settings
+(`admin.*`) can only be changed in `config.json`, never from the panel.
 
 ## Configuring
 
@@ -79,13 +104,13 @@ for all options and `examples/` for ready examples:
 ## Security notes
 
 - The subscription id is checked (`server.subid_regex`) before it is sent to the panel.
-- There is no login and no rate limiting. Keep the port on localhost and use a reverse proxy.
+- The public subscription route has no login and no rate limiting (the subscription id is the secret). Keep the port on localhost and use a reverse proxy. The admin panel has a password, signed session cookies, CSRF protection and a failed-login lockout.
 - Never commit `config.json` (the `.gitignore` excludes it).
 - The service never logs subscription ids or panel URLs.
 
 ## Not included (yet)
 
-A web admin panel, and WARP integration. Planned.
+WARP integration. Planned.
 
 ## Similar projects (not affiliated)
 

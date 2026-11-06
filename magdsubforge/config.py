@@ -29,6 +29,12 @@ DEFAULTS = {
         "pass_headers": ["Profile-Title", "Profile-Update-Interval", "Subscription-Userinfo",
                          "Profile-Web-Page-Url", "Support-Url", "Announce", "Content-Disposition"],
     },
+    "admin": {
+        "path": "/admin",                        # web admin panel; it stays OFF until a password is set
+        "password": "", "password_hash": "",      # use password_hash (python -m magdsubforge hash-password)
+        "session_hours": 12,
+        "max_failed_logins": 5, "lockout_seconds": 300,
+    },
     "rules": [],
     "groups": [],
     "patches": [],
@@ -78,6 +84,14 @@ SECTION_CHECKS = {
         "headers": (lambda v: isinstance(v, dict) and all(isinstance(a, str) and isinstance(b, str) for a, b in v.items()),
                     "an object of strings"),
         "pass_headers": (lambda v: isinstance(v, list) and all(isinstance(a, str) for a in v), "a list of strings"),
+    },
+    "admin": {
+        "path": (lambda v: isinstance(v, str) and v.startswith("/") and len(v) > 1, "a string starting with /"),
+        "password": (lambda v: isinstance(v, str), "a string"),
+        "password_hash": (lambda v: isinstance(v, str), "a string"),
+        "session_hours": (lambda v: _is_num(v) and v > 0, "a number > 0"),
+        "max_failed_logins": (lambda v: _is_int(v) and v >= 1, "an integer >= 1"),
+        "lockout_seconds": (lambda v: _is_num(v) and v > 0, "a number > 0"),
     },
 }
 
@@ -201,6 +215,10 @@ def normalize(raw):
             problems.append("%s: unknown key; ignored" % k)
     _section("server", raw.get("server"), conf, problems)
     _section("panel", raw.get("panel"), conf, problems)
+    _section("admin", raw.get("admin"), conf, problems)
+    if conf["admin"]["password"] and not conf["admin"]["password_hash"]:
+        problems.append("admin.password: stored in plain text; consider admin.password_hash "
+                        "(python -m magdsubforge hash-password)")
     for kind in ("rules", "groups", "patches"):
         _items(kind, raw.get(kind), conf, problems)
     for g in conf["groups"]:
@@ -208,6 +226,15 @@ def normalize(raw):
             problems.append("groups[%s]: type %s normally needs a `probe` (observatory); clients may reject it without"
                             % (g["id"], g["type"]))
     return conf, problems
+
+
+def is_warning(problem):
+    """Problems that do not stop anything from working (everything else means something was ignored/skipped)."""
+    return "unknown key" in problem or "normally needs" in problem or "plain text" in problem
+
+
+def split_problems(problems):
+    return [p for p in problems if not is_warning(p)], [p for p in problems if is_warning(p)]
 
 
 class ConfigStore:

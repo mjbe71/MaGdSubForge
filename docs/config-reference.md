@@ -27,6 +27,20 @@ panel response ──► patches (stage "source") ──► rules ──► grou
 | `subid_regex` | `"^[A-Za-z0-9_-]{4,64}$"` | Ids not matching this get a 404 without contacting the panel. |
 | `workers`, `threads` | `2`, `4` | Used by gunicorn (`gunicorn.conf.py`). |
 
+## `admin`
+
+The web admin panel at `server`'s address + `admin.path`. It is **off until you set a password**.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `password_hash` | `""` | Recommended. Create it with `python -m magdsubforge hash-password` and paste the result. |
+| `password` | `""` | Plain-text alternative (a note is logged). Ignored when `password_hash` is set. |
+| `path` | `"/admin"` | Where the panel lives. Needs a restart to change. |
+| `session_hours` | `12` | How long a login lasts. Changing the password logs everyone out. |
+| `max_failed_logins`, `lockout_seconds` | `5`, `300` | After this many wrong passwords from one address, logins from it are refused for that long. |
+
+The panel edits every other section of `config.json` but never shows or changes `admin`.
+
 ## `panel`
 
 | Key | Default | Meaning |
