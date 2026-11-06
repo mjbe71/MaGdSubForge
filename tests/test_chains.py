@@ -192,3 +192,40 @@ class ServerWithChains(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Choices(unittest.TestCase):
+    CHAIN = {"id": "w", "exit_when": {"remark": {"startswith": "fast-"}}, "choices": {"endpoint": ["a", "b", "c", "d"]},
+             "entry": {"protocol": "masque", "settings": {"address": "{choice.endpoint}", "port": 443}}}
+
+    def addr(self, subid):
+        out, _ = run([self.CHAIN], subid=subid)[0]
+        chain = next(c for c in out if c.get("remarks") == "w")
+        return chain["outbounds"][0]["settings"]["address"]
+
+    def test_stable_per_user_and_spread(self):
+        self.assertEqual(self.addr("user-1"), self.addr("user-1"))
+        self.assertEqual(self.addr(None), "a")                      # no id: the first one
+        seen = {self.addr("user-%d" % i) for i in range(40)}
+        self.assertEqual(seen, {"a", "b", "c", "d"})
+
+    def test_validation(self):
+        _, problems = normalize({"chains": [dict(self.CHAIN, choices={"x": []})]})
+        self.assertTrue(any("choices" in p for p in problems))
+        _, problems = normalize({"chains": [self.CHAIN]})
+        self.assertEqual(problems, [])
+
+    def test_warp_masque_example(self):
+        with open(os.path.join(ROOT, "examples", "warp-masque.json"), encoding="utf-8") as f:
+            raw = json.load(f)
+        conf, problems = normalize(raw)
+        self.assertEqual([p for p in problems if "unknown key" not in p], [])
+        acc = {"default": {"privateKey": "K", "publicKey": "P", "address": ["172.16.0.2", "2606::1"]}}
+        out, report = process(copy.deepcopy(PANEL), conf, subid="u1", accounts=acc)
+        self.assertEqual(report["errors"], [])
+        entry = next(c for c in out if c["remarks"] == "warp")["outbounds"][0]
+        self.assertEqual(entry["protocol"], "masque")
+        self.assertTrue(entry["settings"]["address"].startswith("162.159."))
+        self.assertEqual(entry["streamSettings"]["masqueSettings"]["warp"]["address"], ["172.16.0.2", "2606::1"])
+        self.assertTrue(entry["streamSettings"]["sockopt"]["dialerProxy"].endswith("-exit"))
+        self.assertEqual(entry["streamSettings"]["sockopt"]["happyEyeballs"]["interleave"], 2)   # the admin's own fields survive

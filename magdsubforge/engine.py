@@ -6,6 +6,7 @@ Nothing here is specific to any naming scheme or provider. With an empty configu
 back unchanged.
 """
 import copy
+import hashlib
 import re
 import sys
 
@@ -115,7 +116,7 @@ def build_group(group, key, members, work, index):
     return out, members
 
 
-_PLACEHOLDER = re.compile(r"\{(account|exit|split|n)(?:\.([A-Za-z0-9_.\-]+))?\}")
+_PLACEHOLDER = re.compile(r"\{(account|exit|choice|split|n)(?:\.([A-Za-z0-9_.\-]+))?\}")
 
 
 def _lookup(m, values):
@@ -158,7 +159,18 @@ def bucketize(cands, split_by, work):
     return buckets
 
 
-def build_chain(chain, key, sts, work, index, account):
+def pick_choices(chain, subid):
+    """{name: one value of the list} for a chain's `choices`. The pick depends only on the subscription id and the chain,
+    so a user keeps the same value on every refresh (and different users spread over the list)."""
+    out = {}
+    for name, options in (chain.get("choices") or {}).items():
+        if isinstance(options, list) and options:
+            h = int(hashlib.sha256(("%s|%s|%s" % (subid or "", chain.get("id"), name)).encode()).hexdigest(), 16)
+            out[name] = options[h % len(options)] if subid else options[0]
+    return out
+
+
+def build_chain(chain, key, sts, work, index, account, subid=None):
     """One output config: the admin's `entry` outbound, dialed through the first exit config's outbound."""
     first = sts[0]
     out = copy.deepcopy(work[first["i"]])
@@ -167,7 +179,8 @@ def build_chain(chain, key, sts, work, index, account):
     old_tag = exit_ob.get("tag")
     gid = slug(chain["id"])
     entry_tag, exit_tag = "%s-%d-entry" % (gid, index), "%s-%d-exit" % (gid, index)
-    values = {"account": account or {}, "exit": dict(first["fields"]), "split": key, "n": len(sts)}
+    values = {"account": account or {}, "exit": dict(first["fields"]), "choice": pick_choices(chain, subid),
+              "split": key, "n": len(sts)}
     entry = substitute(chain["entry"], values)
     entry["tag"] = entry_tag
     others = [o for i, o in enumerate(out["outbounds"]) if i != mi]
@@ -267,7 +280,7 @@ def process(configs, conf, subid=None, accounts=None):
             cands = [st for st in alive if match(ch.get("exit_when"), work[st["i"]], st["fields"])
                      and main_index(work[st["i"]]) is not None]
             for bi, (key, sts) in enumerate(bucketize(cands, ch.get("split_by"), work).items()):
-                cfg = guarded("chain %s" % ch["id"], lambda key=key, sts=sts, bi=bi: build_chain(ch, key, sts, work, bi, account))
+                cfg = guarded("chain %s" % ch["id"], lambda key=key, sts=sts, bi=bi: build_chain(ch, key, sts, work, bi, account, subid))
                 if cfg is None:
                     continue
                 sts[0]["chains"].append(ch["id"])

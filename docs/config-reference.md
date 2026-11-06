@@ -161,12 +161,18 @@ outbound** (for example a WARP/masque or WireGuard outbound), which in turn is d
 | `remove_exit_from_output` | `false` | Remove the exit config from the result. |
 | `position` | where the exit was | `"top"` or `"bottom"`. |
 
-**Placeholders** inside `entry` (strings only): `{account.<key>}` values from [`accounts`](#accounts), `{exit.<field>}`
+**Placeholders** inside `entry` (strings only): `{choice.<name>}` (one value from this chain's `choices`), `{account.<key>}` values from [`accounts`](#accounts), `{exit.<field>}`
 any field of the exit config (`address`, `port`, `remark`, ...), `{split}`, `{n}`. A string that is *only* a placeholder
 keeps the value's type (so lists such as an address list work). If a value is missing, that chain is skipped and the
 problem is reported (preview, stderr); everything else still works. The `entry` outbound gets the tag
 `<id>-<bucket>-entry` and the exit `<id>-<bucket>-exit`; routing rules that pointed at the exit's old tag, and a final
 "all traffic" rule, now point at the entry.
+
+`choices` (optional) is an object of lists, e.g. `{"endpoint": ["1.2.3.4", "5.6.7.8"]}`. Each user gets one value from each
+list, available as `{choice.endpoint}`; it depends only on the subscription id and the chain, so a user always gets the same
+one and users are spread over the list. Without a subscription id (preview) the first value is used.
+
+A complete, working WARP-over-MASQUE setup is in `examples/warp-masque.json`.
 
 ## `accounts`
 

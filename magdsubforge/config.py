@@ -124,8 +124,8 @@ ITEM_KEYS = {
     "rules": {"id", "enabled", "when", "do"},
     "groups": {"id", "enabled", "when", "split_by", "name", "type", "params", "probe", "probe_kind",
                "member_cost", "min_members", "remove_members_from_output", "position"},
-    "chains": {"id", "enabled", "exit_when", "split_by", "name", "entry", "through_exit", "remove_exit_from_output",
-               "position"},
+    "chains": {"id", "enabled", "exit_when", "split_by", "name", "entry", "choices", "through_exit",
+               "remove_exit_from_output", "position"},
     "patches": {"id", "enabled", "stage", "target", "when", "merge", "routing_prepend", "routing_append"},
 }
 
@@ -199,6 +199,9 @@ def _check_item(kind, item, where):
             p.append('%s.split_by: must be {"field": "...", "regex": "..."} with a valid regex' % where)
         if "name" in item and not isinstance(item["name"], str):
             p.append("%s.name: must be a string" % where)
+        ch = item.get("choices")
+        if ch is not None and not (isinstance(ch, dict) and all(isinstance(v, list) and v for v in ch.values())):
+            p.append('%s.choices: must be an object of non-empty lists, e.g. {"endpoint": ["1.2.3.4", "5.6.7.8"]}' % where)
         for k in ("through_exit", "remove_exit_from_output"):
             if k in item and not isinstance(item[k], bool):
                 p.append("%s.%s: must be true or false" % (where, k))

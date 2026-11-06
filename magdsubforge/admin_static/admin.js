@@ -36,7 +36,8 @@
       newItem: "new", confirmDel: "Delete this item?",
       tlsCert: "HTTPS certificate file (optional)", tlsKey: "HTTPS key file (optional)",
       chains: "Chains", chainsHint: "Build a config whose own outbound (yours, e.g. WARP) is dialed through an exit config from the panel. Use {account.x}, {exit.address}, {split}, {n} inside the entry.",
-      exitWhen: "Exit configs (conditions)", entry: "Entry outbound (JSON)", entryHint: "Placeholders: {account.key} from the accounts source, {exit.address} (any field), {split}, {n}.",
+      exitWhen: "Exit configs (conditions)", entry: "Entry outbound (JSON)", entryHint: "Placeholders: {account.key} from the accounts source, {exit.address} (any field), {choice.name} (see below), {split}, {n}.",
+      choices: "Choices per user (JSON, optional)", choicesHint: "For example {\"endpoint\": [\"1.2.3.4\", \"5.6.7.8\"]}: each user gets one value, always the same one, available as {choice.endpoint}.",
       throughExit: "Dial the entry through the exit config", removeExit: "Remove the exit config from the output", hint_chain_split: "Empty regex = one chain from the first match",
       accounts: "Accounts (values for {account.*})", accountFile: "Accounts file", accountHint: "JSON file next to config.json; keep it private.", accountDefault: "Shared account (JSON, optional; the file wins)",
       regTitle: "Automatic WARP accounts", regEnabled: "Create a WARP account for each new user automatically (needs the accounts file; uses Cloudflare's unofficial API)", regRetry: "Wait after a failure (s)", regApi: "API address (optional)", regVersion: "Client version (optional)",
@@ -71,7 +72,8 @@
       newItem: "جدید", confirmDel: "این مورد حذف شود؟",
       tlsCert: "فایل گواهی HTTPS (اختیاری)", tlsKey: "فایل کلید HTTPS (اختیاری)",
       chains: "زنجیره‌ها", chainsHint: "کانفیگی بسازید که outbound خودتان (مثلاً WARP) از داخل یک کانفیگ خروجی پنل عبور می‌کند. داخل entry می‌توانید از {account.x}، {exit.address}، {split} و {n} استفاده کنید.",
-      exitWhen: "کانفیگ‌های خروجی (شرط‌ها)", entry: "outbound ورودی (JSON)", entryHint: "جاگذارها: {account.key} از منبع حساب‌ها، {exit.address} (هر فیلد)، {split} و {n}.",
+      exitWhen: "کانفیگ‌های خروجی (شرط‌ها)", entry: "outbound ورودی (JSON)", entryHint: "جاگذارها: {account.key} از منبع حساب‌ها، {exit.address} (هر فیلد)، {choice.name} (پایین را ببینید)، {split} و {n}.",
+      choices: "انتخاب برای هر کاربر (JSON، اختیاری)", choicesHint: "مثلاً {\"endpoint\": [\"1.2.3.4\", \"5.6.7.8\"]}: هر کاربر یکی از مقادیر را می‌گیرد (همیشه همان یکی) و با {choice.endpoint} در دسترس است.",
       throughExit: "ورودی از داخل کانفیگ خروجی عبور کند", removeExit: "کانفیگ خروجی از نتیجه حذف شود", hint_chain_split: "regex خالی = یک زنجیره از اولین مطابق",
       accounts: "حساب‌ها (مقدار {account.*})", accountFile: "فایل حساب‌ها", accountHint: "فایل JSON کنار config.json؛ محرمانه نگه دارید.", accountDefault: "حساب مشترک (JSON، اختیاری؛ فایل اولویت دارد)",
       regTitle: "حساب WARP خودکار", regEnabled: "برای هر کاربر جدید خودکار حساب WARP بساز (به فایل حساب‌ها نیاز دارد؛ از API غیررسمی Cloudflare استفاده می‌کند)", regRetry: "صبر پس از شکست (ثانیه)", regApi: "آدرس API (اختیاری)", regVersion: "نسخهٔ کلاینت (اختیاری)",
@@ -99,8 +101,8 @@
     balSplit: "One balancer per … (optional pattern; the first (group) is the name, e.g. ^[^-]+-([^-]+) )", balType: "Balancer type",
     balNote: "A health probe with common defaults is added; you can change it in the Balancers tab.",
     goalWarp: "Send traffic through WARP", goalWarpHelp: "Use configs whose name contains … as the exit:",
-    warpEndpoint: "WARP endpoint address", warpPort: "Port", warpAuto: "Create a WARP account for each user automatically",
-    warpNote: "Check the endpoint and the outbound fields against your Xray build before relying on this. Automatic accounts use Cloudflare's unofficial API.",
+    warpEndpoint: "WARP endpoint addresses (one per line)", warpEndpointHint: "Each user gets one of these (always the same one for the same user).", warpAuto: "Create a WARP account for each user automatically",
+    warpNote: "The outbound is a working WARP-over-MASQUE example; you can edit every field in the \"Via another route\" tab. Automatic accounts use Cloudflare's unofficial API.",
     matches: "matches {n} of {m} in your sample", noMatchSample: "Try a subscription in step 2 to see how many match.",
     s4help: "This is what your users will get. Look at the list on the right, run the checks, then save.",
     checksTitle: "Checks", runChecks: "Run the checks again", running: "Checking…",
@@ -144,8 +146,8 @@
     balSplit: "برای هر … یک بالانسر (الگوی اختیاری؛ (گروه) اول = نام، مثلاً ^[^-]+-([^-]+) )", balType: "نوع بالانسر",
     balNote: "یک probe سلامت با مقادیر رایج اضافه می‌شود؛ در تب «بالانسر» می‌توانید تغییرش دهید.",
     goalWarp: "عبور ترافیک از WARP", goalWarpHelp: "کانفیگ‌هایی که نامشان شامل این متن است به‌عنوان خروجی استفاده شوند:",
-    warpEndpoint: "آدرس endpoint وارپ", warpPort: "پورت", warpAuto: "برای هر کاربر خودکار حساب WARP بساز",
-    warpNote: "پیش از اتکا به این، endpoint و فیلدهای outbound را با نسخهٔ Xray خودتان تطبیق دهید. حساب خودکار از API غیررسمی Cloudflare استفاده می‌کند.",
+    warpEndpoint: "آدرس‌های endpoint وارپ (هر خط یکی)", warpEndpointHint: "هر کاربر یکی از این‌ها را می‌گیرد (برای یک کاربر همیشه همان یکی).", warpAuto: "برای هر کاربر خودکار حساب WARP بساز",
+    warpNote: "این outbound یک نمونهٔ کارکنِ WARP روی MASQUE است؛ همهٔ فیلدهایش را در تب «عبور از مسیر دیگر» می‌توانید ویرایش کنید. حساب خودکار از API غیررسمی Cloudflare استفاده می‌کند.",
     matches: "{n} مورد از {m} کانفیگ نمونهٔ شما مطابقت دارد", noMatchSample: "در مرحلهٔ ۲ یک اشتراک را امتحان کنید تا تعداد مطابقت‌ها را ببینید.",
     s4help: "این همان چیزی است که کاربران می‌گیرند. فهرست سمت دیگر را ببینید، بررسی‌ها را اجرا کنید و ذخیره کنید.",
     checksTitle: "بررسی‌ها", runChecks: "اجرای دوبارهٔ بررسی‌ها", running: "در حال بررسی…",
@@ -437,7 +439,8 @@
       h("div", { class: "row" },
         h("label", { class: "check" }, bindBool(c, "through_exit", true), t("throughExit")),
         h("label", { class: "check" }, bindBool(c, "remove_exit_from_output", false), t("removeExit"))),
-      field(t("entry"), bindJSON(c, "entry", 10), t("entryHint"), true));
+      field(t("entry"), bindJSON(c, "entry", 10), t("entryHint"), true),
+      field(t("choices"), bindJSON(c, "choices", 4), t("choicesHint"), true));
   };
 
   const patchBody = (p) => h("div", {}, whenEditor(p),
@@ -514,8 +517,44 @@
 
 
   // ---------- setup wizard ----------
+  const WARP_ENDPOINTS = ["162.159.198.114", "162.159.198.206", "162.159.198.186", "162.159.198.135", "162.159.198.219", "162.159.198.64", "162.159.198.231", "162.159.198.250", "162.159.198.184", "162.159.198.197", "162.159.198.48", "162.159.198.203", "162.159.198.230", "162.159.199.87", "162.159.199.127", "162.159.199.188", "162.159.199.163", "162.159.199.193", "162.159.199.102", "162.159.199.76", "162.159.199.192", "162.159.199.111", "162.159.199.113", "162.159.199.46", "162.159.199.109", "162.159.199.106", "162.159.199.101", "162.159.199.190", "162.159.199.235", "162.159.199.100", "162.159.199.83", "162.159.199.37", "162.159.199.149"];
+  const WARP_ENTRY = {
+  "protocol": "masque",
+  "settings": {
+    "address": "{choice.endpoint}",
+    "port": 443
+  },
+  "targetStrategy": "UseIPv4v6",
+  "streamSettings": {
+    "sockopt": {
+      "domainStrategy": "UseIP",
+      "happyEyeballs": {
+        "tryDelayMs": 250,
+        "prioritizeIPv6": false,
+        "interleave": 2,
+        "maxConcurrentTry": 20
+      }
+    },
+    "method": "masque",
+    "security": "tls",
+    "tlsSettings": {
+      "serverName": "www.cloudflare.com",
+      "fingerprint": "ios",
+      "alpn": [
+        "h2"
+      ]
+    },
+    "masqueSettings": {
+      "warp": {
+        "privateKey": "{account.privateKey}",
+        "publicKey": "{account.publicKey}",
+        "address": "{account.address}"
+      }
+    }
+  }
+};
   const wiz = { step: 0, hide: { on: false, text: "" }, bal: { on: false, text: "", split: "", type: "leastLoad" },
-    warp: { on: false, text: "", endpoint: "engage.cloudflareclient.com", port: 443, auto: true }, checks: null, running: false, done: false, connMsg: null };
+    warp: { on: false, text: "", endpoints: WARP_ENDPOINTS.join("\n"), auto: true }, checks: null, running: false, done: false, connMsg: null };
 
   function upsert(kind, item) {
     const l = (cfg[kind] = cfg[kind] || []);
@@ -533,9 +572,10 @@
       upsert("groups", g);
     } else dropWiz("groups", "balance-configs");
     if (wiz.warp.on && warp) {
-      upsert("chains", { id: "warp-chain", exit_when: { remark: { icontains: warp } }, entry: {
-        protocol: "masque", settings: { address: wiz.warp.endpoint.trim(), port: Number(wiz.warp.port) || 443 },
-        streamSettings: { masqueSettings: { warp: { privateKey: "{account.privateKey}", publicKey: "{account.publicKey}", address: "{account.address}" } } } } });
+      const eps = wiz.warp.endpoints.split(/[\s,]+/).filter(Boolean);
+      const chain = { id: "warp-chain", exit_when: { remark: { icontains: warp } }, entry: JSON.parse(JSON.stringify(WARP_ENTRY)) };
+      if (eps.length) chain.choices = { endpoint: eps }; else chain.entry.settings.address = "";
+      upsert("chains", chain);
       if (wiz.warp.auto) {
         const a = (cfg.accounts = cfg.accounts || {});
         if (!a.file) a.file = "accounts.json";
@@ -649,9 +689,8 @@
             ["leastLoad", "leastPing", "random", "roundRobin"].map((x) => h("option", { value: x }, x))); sel.value = wiz.bal.type; return sel; })()),
           h("p", { class: "hint" }, t("balNote")))),
         goal("warp", t("goalWarp"), t("goalWarpHelp"), () => h("div", {},
-          h("div", { class: "grid" },
-            field(t("warpEndpoint"), h("input", { type: "text", value: wiz.warp.endpoint, oninput: (e) => { wiz.warp.endpoint = e.target.value; } })),
-            field(t("warpPort"), h("input", { type: "number", value: wiz.warp.port, oninput: (e) => { wiz.warp.port = e.target.value; } }))),
+          field(t("warpEndpoint"), (() => { const ta = h("textarea", { rows: 4, spellcheck: "false" }); ta.value = wiz.warp.endpoints;
+            ta.addEventListener("input", () => { wiz.warp.endpoints = ta.value; }); return ta; })(), t("warpEndpointHint"), true),
           h("label", { class: "check" }, h("input", { type: "checkbox", checked: wiz.warp.auto, onchange: (e) => { wiz.warp.auto = e.target.checked; } }), t("warpAuto")),
           h("p", { class: "hint" }, t("warpNote")))),
         buttons());
