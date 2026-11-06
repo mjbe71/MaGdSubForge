@@ -178,7 +178,7 @@ class ScanCerts(unittest.TestCase):
         os.makedirs(d, exist_ok=True)
         subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", os.path.join(d, keyname),
                         "-out", os.path.join(d, certname), "-days", "30", "-subj", "/CN=" + cn,
-                        "-addext", "subjectAltName=" + san], check=True, capture_output=True)
+                        "-addext", "subjectAltName=" + san, "-addext", "basicConstraints=CA:FALSE"], check=True, capture_output=True)
         return os.path.join(d, certname), os.path.join(d, keyname)
 
     def test_scan(self):

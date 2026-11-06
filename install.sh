@@ -293,7 +293,7 @@ step_tls() {                              # decides HTTPS; sets TLS_OK=1 when ce
     if [ -n "$others" ]; then
       echo >&2
       say "Certificates found on this machine that cannot be used for $DOMAIN:"
-      printf '%b\n' "$others" >&2
+      printf '%b\n' "$others" | head -n 12 >&2
       if interactive; then
         CERT=$(ask "Path of the certificate to use instead (fullchain), or press Enter to continue" "")
         if [ -n "$CERT" ]; then

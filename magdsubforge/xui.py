@@ -99,7 +99,7 @@ def detect(db_path=None):
 
 # ---------------------------------------------------------------- scanning for certificates by domain
 SCAN_DIRS = ("/root/cert", "/root/.acme.sh", "/root/.cert", "/etc/letsencrypt/live", "/etc/x-ui", "/usr/local/x-ui",
-             "/etc/ssl", "/etc/pki/tls", "/opt/cert", "/etc/nginx/ssl", "/etc/caddy")
+             "/opt/cert", "/etc/nginx/ssl", "/etc/caddy")
 CERT_EXT = (".pem", ".crt", ".cer", ".cert")
 
 
@@ -124,6 +124,8 @@ def cert_info(path):
     text = _openssl(["x509", "-in", path, "-noout", "-text", "-enddate"])
     if not text:
         return None
+    if re.search(r"CA:\s*TRUE", text) or "snakeoil" in path.lower():
+        return None                     # CA / root certificates (the system's trust store) and the OS's dummy certificate
     names = [n.lower() for n in re.findall(r"DNS:([^,\s]+)", text)]
     cn = re.search(r"Subject:.*?CN\s*=\s*([^,\n/]+)", text)
     if cn and cn.group(1).strip().lower() not in names:
