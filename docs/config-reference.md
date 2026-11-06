@@ -206,7 +206,7 @@ subscription without the chain, and it is retried later. Registration happens in
 first fetch takes a couple of seconds longer.
 
 Manual creation: `python -m magdsubforge register-account [--subid ID] [--force]` (no id = the shared account), or the
-button in the admin panel (Settings tab). Needs the `cryptography` package (in `requirements.txt`).
+button in the admin panel (Settings tab). Only WARP over **MASQUE** accounts are created (WireGuard accounts work differently and are not supported yet). Needs the `cryptography` package (in `requirements.txt`).
 
 ## `patches`: change anything
 
