@@ -13,6 +13,12 @@ import json
 import os
 import sys
 import threading
+import time
+
+try:
+    import fcntl
+except ImportError:          # not on Windows: no cross-process lock there
+    fcntl = None
 
 
 def _log(msg):
@@ -31,8 +37,11 @@ def parse(raw):
 
 
 class AccountStore:
-    def __init__(self, config_store):
+    def __init__(self, config_store, registrar=None):
         self.config_store = config_store
+        self.registrar = registrar                     # tests plug a fake in; default: warp.register_account
+        self._busy = {}                                # subscription id -> its lock (one registration at a time)
+        self._failed = {}                              # subscription id -> time of the last failed attempt
         self._lock = threading.Lock()
         self._sig = None
         self._file_data = {"default": {}, "users": {}}
@@ -69,3 +78,88 @@ class AccountStore:
         default = dict(conf["default"])
         default.update(data["default"])
         return {"default": default, "users": data["users"]}
+
+    # ---- automatic registration (accounts.register) ----
+    def _registrar(self):
+        if self.registrar:
+            return self.registrar
+        from .warp import register_account
+        return register_account
+
+    def _locked_update(self, path, fn):
+        """Read-modify-write the accounts file under a lock shared by all worker processes."""
+        from .admin import _write_atomic
+        lock = open(path + ".lock", "a") if path else None
+        try:
+            if lock and fcntl:
+                fcntl.flock(lock, fcntl.LOCK_EX)
+            try:
+                with open(path, encoding="utf-8") as f:
+                    raw = json.load(f)
+            except FileNotFoundError:
+                raw = {}
+            if not isinstance(raw, dict):
+                raise ValueError("%s is not a JSON object" % os.path.basename(path))
+            if "default" not in raw and "users" not in raw:      # flat file: keep it as the shared account
+                raw = {"default": {k: v for k, v in raw.items() if not k.startswith("_")}}
+            raw.setdefault("users", {})
+            result = fn(raw)
+            _write_atomic(path, raw)
+            return result
+        finally:
+            if lock:
+                lock.close()
+
+    def register(self, subid=None, force=False):
+        """Create an account and save it for `subid` (or as the shared one when None). Returns the account's id.
+        Raises warp.ApiError / OSError / ValueError on failure. Already registered and not `force`: returns None."""
+        conf = self.config_store.get()["accounts"]
+        path = self._file_path(conf["file"])
+        if not path:
+            raise ValueError("accounts.file is not set; there is nowhere to save accounts")
+        reg = conf["register"]
+        have = self.get()
+        if not force and ((subid in have["users"]) if subid else bool(have["default"])):
+            return None                                # already has one: do not ask the API for nothing
+        entry = self._registrar()(api=reg["api"], client_version=reg["client_version"])
+
+        def put(raw):
+            if subid is None:
+                if raw.get("default") and not force:
+                    return None
+                raw["default"] = entry
+            else:
+                if subid in raw["users"] and not force:
+                    return None
+                raw["users"][subid] = entry
+            return entry.get("id", "")
+        return self._locked_update(path, put)
+
+    def ensure(self, subid):
+        """Called for each subscription request: make a personal account when automatic registration is on and this user
+        has none yet. Never raises; a failure is remembered for `retry_seconds` so the registration API is not hammered."""
+        conf = self.config_store.get()["accounts"]
+        if not conf["register"]["enabled"] or not subid:
+            return
+        if subid in self.get()["users"]:
+            return
+        now = time.time()
+        with self._lock:
+            if now - self._failed.get(subid, 0) < conf["register"]["retry_seconds"]:
+                return
+            lock = self._busy.setdefault(subid, threading.Lock())
+        if not lock.acquire(blocking=False):
+            return                                     # another request is already registering this user
+        try:
+            if subid in self.get()["users"]:
+                return
+            new_id = self.register(subid)
+            if new_id is not None:
+                _log("created an account for a new user (device %s)" % (new_id or "?"))
+        except Exception as e:
+            with self._lock:
+                self._failed[subid] = time.time()
+            _log("could not create an account (%s: %s); will retry in %ds" % (
+                type(e).__name__, e, conf["register"]["retry_seconds"]))
+        finally:
+            lock.release()

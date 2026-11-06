@@ -39,6 +39,8 @@
       exitWhen: "Exit configs (conditions)", entry: "Entry outbound (JSON)", entryHint: "Placeholders: {account.key} from the accounts source, {exit.address} (any field), {split}, {n}.",
       throughExit: "Dial the entry through the exit config", removeExit: "Remove the exit config from the output", hint_chain_split: "Empty regex = one chain from the first match",
       accounts: "Accounts (values for {account.*})", accountFile: "Accounts file", accountHint: "JSON file next to config.json; keep it private.", accountDefault: "Shared account (JSON, optional; the file wins)",
+      regTitle: "Automatic WARP accounts", regEnabled: "Create a WARP account for each new user automatically (needs the accounts file; uses Cloudflare's unofficial API)", regRetry: "Wait after a failure (s)", regApi: "API address (optional)", regVersion: "Client version (optional)",
+      regNow: "Create account now", regSubid: "Subscription id (empty = the shared account)", regSaveFirst: "Save the settings first (the accounts file must be saved).", regOk: "Account created.", regExists: "That user already has an account.",
     },
     fa: {
       title: "مدیریت MaGdSubForge", password: "رمز عبور", login: "ورود", logout: "خروج", save: "ذخیره", saved: "ذخیره شد. تغییرات از درخواست بعدی اعمال می‌شود.",
@@ -72,6 +74,8 @@
       exitWhen: "کانفیگ‌های خروجی (شرط‌ها)", entry: "outbound ورودی (JSON)", entryHint: "جاگذارها: {account.key} از منبع حساب‌ها، {exit.address} (هر فیلد)، {split} و {n}.",
       throughExit: "ورودی از داخل کانفیگ خروجی عبور کند", removeExit: "کانفیگ خروجی از نتیجه حذف شود", hint_chain_split: "regex خالی = یک زنجیره از اولین مطابق",
       accounts: "حساب‌ها (مقدار {account.*})", accountFile: "فایل حساب‌ها", accountHint: "فایل JSON کنار config.json؛ محرمانه نگه دارید.", accountDefault: "حساب مشترک (JSON، اختیاری؛ فایل اولویت دارد)",
+      regTitle: "حساب WARP خودکار", regEnabled: "برای هر کاربر جدید خودکار حساب WARP بساز (به فایل حساب‌ها نیاز دارد؛ از API غیررسمی Cloudflare استفاده می‌کند)", regRetry: "صبر پس از شکست (ثانیه)", regApi: "آدرس API (اختیاری)", regVersion: "نسخهٔ کلاینت (اختیاری)",
+      regNow: "همین الان حساب بساز", regSubid: "شناسهٔ ساب (خالی = حساب مشترک)", regSaveFirst: "ابتدا تنظیمات را ذخیره کنید (فایل حساب‌ها باید ذخیره شده باشد).", regOk: "حساب ساخته شد.", regExists: "این کاربر از قبل حساب دارد.",
     },
   };
   let lang = (navigator.language || "").startsWith("fa") ? "fa" : "en";
@@ -315,6 +319,28 @@
     field(t("routingPre"), bindJSON(p, "routing_prepend"), null, true),
     field(t("routingPost"), bindJSON(p, "routing_append"), null, true));
 
+  function registerEditor(a) {
+    const r = (a.register = a.register || {});
+    const subid = h("input", { type: "text", placeholder: "" });
+    const msg = h("span", { class: "hint" });
+    const btn = h("button", { type: "button", onclick: async () => {
+      if (isDirty()) { msg.textContent = t("regSaveFirst"); return; }
+      btn.disabled = true; msg.textContent = "…";
+      const res = await api("register-account", { subid: subid.value.trim() });
+      btn.disabled = false;
+      msg.textContent = res.ok ? (res.data.created ? t("regOk") : t("regExists")) : (res.data.error || "error");
+    } }, t("regNow"));
+    return h("div", {},
+      h("h3", {}, t("regTitle")),
+      h("label", { class: "check" }, bindBool(r, "enabled", false), t("regEnabled")),
+      h("div", { class: "grid" },
+        field(t("regRetry"), bindText(r, "retry_seconds", { num: true, placeholder: "600" })),
+        field(t("regApi"), bindText(r, "api")),
+        field(t("regVersion"), bindText(r, "client_version"))),
+      field(t("regSubid"), subid),
+      h("div", {}, btn, " ", msg));
+  }
+
   function settingsEditor() {
     const s = (cfg.server = cfg.server || {});
     const p = (cfg.panel = cfg.panel || {});
@@ -342,6 +368,7 @@
       h("h3", {}, t("accounts")),
       h("div", { class: "grid" }, field(t("accountFile"), bindText(a, "file", { placeholder: "accounts.json" }), t("accountHint"), true)),
       field(t("accountDefault"), bindJSON(a, "default"), null, true),
+      registerEditor(a),
       h("p", { class: "hint" }, t("adminNote")));
   }
 

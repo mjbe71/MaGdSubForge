@@ -41,6 +41,8 @@ def create_app(store=None):
         except PanelError as e:
             return text(e.message, e.status)
         try:
+            if conf["accounts"]["register"]["enabled"] and any(c.get("enabled", True) for c in conf["chains"]):
+                accounts.ensure(subid)
             out, _ = process(configs, conf, subid=subid, accounts=accounts.get())
         except Exception as e:   # better to hand out the panel's own configs than nothing
             print("[server] processing failed (%s: %s); passing the panel's response through"

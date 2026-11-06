@@ -39,6 +39,11 @@ DEFAULTS = {
     "accounts": {
         "file": "",                              # JSON file with account values for {account.*} placeholders
         "default": {},                           # ...or put a shared account right here
+        "register": {                            # optional: create a Cloudflare WARP account for each user automatically
+            "enabled": False,                    # needs accounts.file (the accounts are saved there under "users")
+            "api": "", "client_version": "",     # empty = built-in values (the unofficial Cloudflare client API)
+            "retry_seconds": 600,                # after a failed attempt wait this long before trying again
+        },
     },
     "rules": [],
     "groups": [],
@@ -104,7 +109,15 @@ SECTION_CHECKS = {
     "accounts": {
         "file": (lambda v: isinstance(v, str), "a file path (string)"),
         "default": (lambda v: isinstance(v, dict), "an object"),
+        "register": (lambda v: isinstance(v, dict), "an object"),
     },
+}
+
+REGISTER_CHECKS = {
+    "enabled": (lambda v: isinstance(v, bool), "true or false"),
+    "api": (lambda v: isinstance(v, str), "a string"),
+    "client_version": (lambda v: isinstance(v, str), "a string"),
+    "retry_seconds": (lambda v: _is_num(v) and v >= 0, "a number >= 0"),
 }
 
 ITEM_KEYS = {
@@ -249,6 +262,21 @@ def normalize(raw):
     _section("panel", raw.get("panel"), conf, problems)
     _section("admin", raw.get("admin"), conf, problems)
     _section("accounts", raw.get("accounts"), conf, problems)
+    reg = dict(DEFAULTS["accounts"]["register"])
+    if isinstance(conf["accounts"]["register"], dict) and conf["accounts"]["register"] is not DEFAULTS["accounts"]["register"]:
+        for k, v in conf["accounts"]["register"].items():
+            check = REGISTER_CHECKS.get(k)
+            if check is None:
+                if not k.startswith("_"):
+                    problems.append("accounts.register.%s: unknown key; ignored" % k)
+            elif not check[0](v):
+                problems.append("accounts.register.%s: must be %s; ignored" % (k, check[1]))
+            else:
+                reg[k] = v
+    conf["accounts"]["register"] = reg
+    if reg["enabled"] and not conf["accounts"]["file"]:
+        problems.append("accounts.register: needs accounts.file to save the accounts; automatic registration stays off")
+        reg["enabled"] = False
     if conf["admin"]["password"] and not conf["admin"]["password_hash"]:
         problems.append("admin.password: stored in plain text; consider admin.password_hash "
                         "(python -m magdsubforge hash-password)")

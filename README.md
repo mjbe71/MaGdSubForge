@@ -147,7 +147,7 @@ for all options and `examples/` for ready examples:
 
 ## Not included (yet)
 
-Automatic per-user account registration (for example WARP). Chains and a shared or per-user accounts file are supported; creating accounts automatically is not, yet.
+Automatic per-user WARP account registration (`accounts.register`, off by default, uses Cloudflare's unofficial API; tested against a simulated API only, not the real one).
 
 ## Similar projects (not affiliated)
 

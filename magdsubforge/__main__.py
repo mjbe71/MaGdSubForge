@@ -6,6 +6,7 @@
     python -m magdsubforge set-admin-password [--stdin]    set the admin password in config.json
     python -m magdsubforge config-get KEY              print a setting (e.g. server.port)
     python -m magdsubforge config-set KEY=VALUE ...    change settings in config.json (VALUE is JSON or text)
+    python -m magdsubforge register-account [--subid ID]   create a WARP account now and save it in accounts.file
     python -m magdsubforge detect-xui [--certs|--suggest]  look for a 3x-ui panel on this machine
     python -m magdsubforge preview panel.json [config.json] [--subid ID] [--full]
                                                       run the rules on a saved panel response, no network
@@ -84,6 +85,10 @@ def main(argv=None):
     cs.add_argument("--unset", action="store_true")
     cs.add_argument("--config")
     sub.add_parser("detect-xui")
+    ra = sub.add_parser("register-account")
+    ra.add_argument("--subid", help="save it as this subscription id's account (default: the shared account)")
+    ra.add_argument("--force", action="store_true", help="replace an existing account")
+    ra.add_argument("--config")
     p = sub.add_parser("preview")
     p.add_argument("panel_json")
     p.add_argument("config", nargs="?")
@@ -144,7 +149,17 @@ def main(argv=None):
         _write_atomic(path, raw)
         return 0
 
-    store = ConfigStore(_path(getattr(a, "config", None)) if a.cmd == "config-get" else a.config)
+    store = ConfigStore(_path(getattr(a, "config", None)) if a.cmd in ("config-get", "register-account") else a.config)
+    if a.cmd == "register-account":
+        from .warp import ApiError
+        try:
+            new_id = AccountStore(store).register(a.subid, force=a.force)
+        except (ApiError, ValueError, OSError) as e:
+            print("Could not create the account: %s" % e, file=sys.stderr)
+            return 1
+        print("Already has an account (use --force to replace it)." if new_id is None
+              else "Account created (device %s)." % new_id)
+        return 0
     if a.cmd == "config-get":
         cur = store.get()
         for part in a.key.split("."):

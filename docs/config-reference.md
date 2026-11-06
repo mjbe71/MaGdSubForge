@@ -182,6 +182,26 @@ The file is either one flat object (one account for everybody) or
 individual users personal values. Treat the file as a secret (`accounts*.json` is in `.gitignore`).
 See `examples/accounts.example.json` and `examples/chain.json`.
 
+### `accounts.register`: create WARP accounts automatically (optional, off by default)
+
+Instead of filling the accounts file by hand, the service can create a Cloudflare WARP (MASQUE) account for each user
+the first time that user fetches the subscription, and save it in the accounts file under `users`.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `enabled` | `false` | Needs `accounts.file`, and at least one enabled chain. |
+| `retry_seconds` | `600` | After a failed attempt, wait this long before trying again for that user. |
+| `api`, `client_version` | `""` | Override the built-in Cloudflare client API address / version string. |
+
+The account has these values for `{account.*}`: `privateKey` (base64), `address` (list), `publicKey` (the server's key,
+when the API gave one) and `id` (device id). **This uses Cloudflare's unofficial client API**: it can change or start
+refusing requests without notice. A failed registration never breaks a subscription: that user just gets the
+subscription without the chain, and it is retried later. Registration happens inside the request, so a user's very
+first fetch takes a couple of seconds longer.
+
+Manual creation: `python -m magdsubforge register-account [--subid ID] [--force]` (no id = the shared account), or the
+button in the admin panel (Settings tab). Needs the `cryptography` package (in `requirements.txt`).
+
 ## `patches`: change anything
 
 Merge JSON of your own into matching configs. This is how you add DNS, routing rules, fragment/mux settings, etc.

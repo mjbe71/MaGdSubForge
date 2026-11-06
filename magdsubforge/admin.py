@@ -11,6 +11,7 @@ import hmac
 import html
 import json
 import os
+import re
 import secrets
 import tempfile
 import threading
@@ -284,7 +285,21 @@ def register(app, store):
         store.load(force=True)
         return reply({"ok": True, "warnings": warnings})
 
+    @guarded
+    def register_account(conf, sess):
+        from .warp import ApiError
+        data = body()
+        subid = data.get("subid") if isinstance(data.get("subid"), str) and data.get("subid") else None
+        if subid and not re.search(conf["server"]["subid_regex"], subid):
+            return reply({"error": "this id does not match server.subid_regex"}, 400)
+        try:
+            new_id = app.accounts.register(subid, force=bool(data.get("force")))
+        except (ApiError, ValueError, OSError) as e:
+            return reply({"error": "could not create the account: %s" % e}, 502)
+        return reply({"ok": True, "created": new_id is not None, "device": new_id or ""})
+
     for name, fn, methods in (("login", login, ["POST"]), ("logout", logout, ["POST"]), ("me", me, ["GET"]),
                               ("state", state, ["GET"]), ("preview", preview, ["POST"]),
-                              ("sample", sample, ["POST"]), ("save", save, ["POST"])):
+                              ("sample", sample, ["POST"]), ("save", save, ["POST"]),
+                              ("register-account", register_account, ["POST"])):
         app.add_url_rule("%s/api/%s" % (base, name), "admin_api_" + name, fn, methods=methods)
